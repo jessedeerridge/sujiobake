@@ -1,0 +1,3007 @@
+<!DOCTYPE html>  
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>テンプレ</title>
+<style>
+  html, body{height:100%; overflow:hidden;}
+  body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#fff;color:#111;}
+  header{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-bottom:1px solid #eee; position:sticky; top:0; z-index:400; background:#fff;}
+  h1{margin:0;font-size:18px;}
+  .small{font-size:12px;opacity:.75;}
+  .join-box{display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding:12px; position:relative; z-index:2;}
+  .join-box input{padding:8px;border:1px solid #ddd;border-radius:6px;font-size:16px;}
+  .btn{padding:6px 10px;border:1px solid #ddd;border-radius:6px;background:#f8f8f8;cursor:pointer;}
+  .btn.primary{background:#111;color:#fff;border-color:#111;}
+  .btn.ghost{background:transparent;}
+  .hidden{display:none;}
+  #lobby{padding:20px;border-top:1px solid #eee; position:relative; z-index:2;}
+  .copy-btn.copied, .btn.ghost.copied{background:#16a34a;color:#fff;border-color:#16a34a;}
+
+  main{
+    position:relative;
+    height:calc(100vh - 60px);
+    overflow:auto;
+    -webkit-overflow-scrolling:touch;
+    background-size:cover;
+    background-position:center;
+    background-repeat:no-repeat;
+  }
+  main.prejoin{ background-image:url('obatop.jpg'); }
+  main.joined{ background-image:url('obamain.jpg'); }
+
+  :root{
+    --card-frame:#8c6d50;
+    --card-back-image:url('obakeura.jpg');
+  }
+
+  .seat-pop{
+    position:fixed;left:50%;bottom:10px;transform:translateX(-50%);
+    background:orange;border:1px solid #eee;border-radius:12px;
+    box-shadow:0 12px 28px rgba(0,0,0,.12);
+    padding:10px;z-index:220;display:flex;flex-direction:column;gap:10px;min-width:280px;
+  }
+  .seat-pop.hidden{display:none;}
+  .seat-pop .row{display:flex;gap:8px;align-items:center;}
+  .seat-pop label{width:84px;font-size:13px;}
+  .seat-pop .tabs{display:flex;gap:6px;flex-wrap:wrap;}
+  .tab{padding:6px 10px;border:1px solid #ddd;border-radius:999px;cursor:pointer;user-select:none;position:relative;}
+  .tab.disabled{opacity:.45; pointer-events:none;}
+  .tab.disabled::after{content:'✕';position:absolute;inset:0;display:grid;place-items:center;font-size:18px;font-weight:700;color:#b91c1c;pointer-events:none;}
+  .tab.active{background:#111;color:#fff;border-color:#111;}
+
+  .host-selecting-pop{
+    position:fixed;left:50%;bottom:10px;transform:translateX(-50%);
+    background:rgba(20,20,20,.92);color:#fff;
+    padding:12px 16px;border-radius:14px;
+    box-shadow:0 18px 40px rgba(0,0,0,.35);
+    z-index:225;font-weight:800;white-space:nowrap;
+    pointer-events:none;
+  }
+  .host-selecting-pop.hidden{display:none;}
+
+  .player-circle{
+    position:relative;width:260px;height:260px;
+    margin:30px auto 0;
+    border-radius:50%;
+    box-sizing:border-box;border:none;
+  }
+  .player-circle::before{content:'';}
+  .player-tag{
+    position:absolute;transform:translate(-50%,-50%);
+    padding:4px 8px;border-radius:999px;background:#f8f8f8;
+    border:1px solid #ddd;font-size:12px;white-space:nowrap;
+    cursor:default;
+  }
+  .player-tag.me{ background:#111;color:#fff;border-color:#111; }
+  .player-tag.turn{ outline:none !important; outline-offset:0 !important; }
+
+  .player-tag .mini-hand{
+    position:absolute;left:50%;top:100%;
+    transform:translate(-50%,3px);
+    width:120px;height:46px;pointer-events:none;
+  }
+  .player-tag .mini-card{
+    position:absolute;left:50%;top:0;
+    width:24px;height:33px;
+    border-radius:6px;border:1px solid #bbb;
+    background:var(--card-back-image) center/cover no-repeat;
+    font-size:10px;display:flex;align-items:center;justify-content:center;
+    transform-origin:bottom center;
+    box-shadow:0 2px 6px rgba(0,0,0,.15);
+    pointer-events:none;
+  }
+
+  /* =========================
+     ★ 追加：手札の並び替え/ドロー演出用ラッパー
+     ========================= */
+  .card-wrap{
+    display:inline-block;
+    position:relative;
+    will-change:transform, opacity;
+  }
+
+  @keyframes drawSlideIn {
+    0%   { transform:translateX(60px); opacity:0; }
+    100% { transform:translateX(0px); opacity:1; }
+  }
+  .card-wrap.draw-in{
+    animation:drawSlideIn 260ms cubic-bezier(.22,.84,.44,1) both;
+  }
+
+  .card-shell{
+    position:relative;
+    width:60px;height:90px;
+    border-radius:10px;
+    background:var(--card-frame);
+    box-shadow:0 4px 12px rgba(0,0,0,.15);
+    user-select:none;
+    touch-action:none;
+    cursor:grab;
+  }
+  .card-shell.dragging{opacity:.35; cursor:grabbing;}
+  .card-face{
+    position:absolute;
+    inset:4px;
+    border-radius:8px;
+    background:var(--card-fill, #ffffff);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    overflow:hidden;
+    position:absolute;
+  }
+
+  .card-number{
+    position:relative;
+    top:-10px;
+    font-size:28px;
+    font-weight:900;
+    line-height:1;
+    color:#fff;
+    letter-spacing:.02em;
+    font-family:
+      "Comic Sans MS",
+      "Hiragino Maru Gothic ProN",
+      "Arial Rounded MT Bold",
+      system-ui, sans-serif;
+    -webkit-text-stroke: 1px #000;
+    text-shadow:
+      0 1px 0 #000,
+      1px 0 0 #000,
+      0 -1px 0 #000,
+      -1px 0 0 #000;
+    z-index:2;
+  }
+
+  /* =========================
+     ★ 追加：カード効果（縦書き）
+     ========================= */
+  .card-role{
+    position:absolute;
+    left:50%;
+    top:50%;
+    transform:translate(calc(-50% + 21px), calc(-50% - 10px));
+    writing-mode:vertical-rl;
+    text-orientation:upright;
+    font-weight:900;
+    font-size:12px;
+    line-height:1.05;
+    color:#111;
+    text-shadow:
+      0 1px 0 rgba(255,255,255,.85),
+      1px 0 0 rgba(255,255,255,.85),
+      0 -1px 0 rgba(255,255,255,.85),
+      -1px 0 0 rgba(255,255,255,.85);
+    z-index:3;
+    pointer-events:none;
+    user-select:none;
+    opacity:.95;
+    letter-spacing:0;
+    white-space:nowrap;
+  }
+
+  .card-art{
+    position:absolute;
+    left:50%;
+    top:40%;
+    transform:translateX(-50%);
+    width:170%;
+    height:60%;
+    object-fit:contain;
+    pointer-events:none;
+    user-select:none;
+    z-index:10;
+  }
+
+  .card-back{
+    position:absolute;
+    inset:0;
+    border-radius:10px;
+    background:var(--card-frame);
+    overflow:hidden;
+  }
+  .card-back::after{
+    content:'';
+    position:absolute;
+    inset:4px;
+    border-radius:8px;
+    background:var(--card-back-image) center/cover no-repeat;
+  }
+
+  .my-hand-wrapper{margin-top:36px;text-align:center;}
+  .my-hand-title{display:none;}
+  .my-hand{display:flex;justify-content:center;gap:8px;margin-top:6px;min-height:110px;flex-wrap:wrap;}
+
+  @keyframes handPulse { 0%{transform:scale(1);} 100%{transform:scale(1.12);} }
+  .my-hand.turn-active .card-shell{ animation:handPulse .55s ease-in-out infinite alternate; }
+
+  @keyframes miniPulse {
+    0%   { transform:translate(-50%,0) scale(1) rotate(var(--rot, 0deg)); }
+    100% { transform:translate(-50%,0) scale(1.10) rotate(var(--rot, 0deg)); }
+  }
+  .player-tag.turn .mini-card{ animation:miniPulse .55s ease-in-out infinite alternate; }
+
+  /* =========================
+     ★ 追加：ショット中（全員の扇状手札が大小パルス）
+     ＋ 扇手札（mini-hand/mini-card）もクリックできる
+     ========================= */
+  @keyframes shotPulse {
+    0%   { transform:translate(-50%,0) scale(.92) rotate(var(--rot, 0deg)); }
+    100% { transform:translate(-50%,0) scale(1.18) rotate(var(--rot, 0deg)); }
+  }
+  .player-circle.shot-mode .player-tag .mini-card{
+    animation:shotPulse .52s ease-in-out infinite alternate !important;
+  }
+  .player-circle.shot-mode .player-tag{ cursor:pointer; }
+  .player-circle.shot-mode .player-tag.me{ cursor:default; }
+
+  .player-circle.shot-mode .player-tag .mini-hand{ pointer-events:auto; }
+  .player-circle.shot-mode .player-tag .mini-card{ pointer-events:auto; cursor:pointer; }
+
+  .dialog-backdrop{
+    position:fixed;inset:0;background:rgba(0,0,0,.35);
+    display:flex;align-items:center;justify-content:center;z-index:300;
+  }
+  .dialog-backdrop.hidden{display:none;}
+  .dialog-box{
+    background:#fff;border-radius:12px;padding:16px 18px;
+    box-shadow:0 18px 40px rgba(0,0,0,.35);
+    max-width:320px;width:calc(100% - 40px);
+  }
+  .dialog-box p{margin:0 0 12px;font-size:14px;line-height:1.6;}
+  .dialog-buttons{display:flex;justify-content:flex-end;gap:8px;}
+
+  .host-settings-btn{
+    position:fixed;right:16px;bottom:16px;width:44px;height:44px;border-radius:50%;
+    border:1px solid #ddd;background:#fff;box-shadow:0 8px 20px rgba(0,0,0,.18);
+    display:none;align-items:center;justify-content:center;font-size:22px;cursor:pointer;z-index:230;
+  }
+  .host-settings-btn.visible{display:flex;}
+
+  .start-pop{
+    position:fixed;right:16px;bottom:72px;background:#fff;border:1px solid #ddd;border-radius:12px;
+    box-shadow:0 12px 28px rgba(0,0,0,.16);padding:10px 12px;z-index:240;min-width:260px;
+    display:flex;flex-direction:column;gap:8px;
+  }
+  .start-pop.hidden{display:none;}
+  .start-pop-header{display:flex;justify-content:space-between;align-items:center;gap:8px;}
+  .start-pop-title{font-size:14px;font-weight:600;}
+  .start-pop-main{font-size:13px;line-height:1.5;}
+  .start-pop-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:4px;flex-wrap:wrap;}
+
+  #roomInfoLobby, #lobby h2, #lobby p {display:none;}
+  #lobby.entered{
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    min-height:calc(100vh - 60px);
+  }
+
+  .help-btn{
+    position:fixed;left:16px;bottom:16px;width:44px;height:44px;border-radius:50%;
+    border:1px solid #111;background:#111;color:#fff;
+    box-shadow:0 8px 20px rgba(0,0,0,.18);
+    display:none;align-items:center;justify-content:center;
+    font-size:22px;font-weight:800;cursor:pointer;z-index:230;
+  }
+  .help-btn.visible{display:flex;}
+
+  .help-pop-backdrop{
+    position:fixed;inset:0;background:rgba(0,0,0,.35);
+    display:flex;align-items:flex-end;justify-content:center;
+    z-index:310;
+    padding:16px;
+  }
+  .help-pop-backdrop.hidden{display:none;}
+  .help-pop{
+    width:min(520px, calc(100% - 0px));
+    max-height:min(70vh, 640px);
+    background:#fff;border:1px solid #ddd;border-radius:16px;
+    box-shadow:0 18px 40px rgba(0,0,0,.35);
+    overflow:hidden;
+  }
+  .help-pop-header{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:10px 12px;border-bottom:1px solid #eee;
+  }
+  .help-pop-title{font-weight:800;font-size:14px;}
+  .help-pop-body{padding:12px;overflow:auto;max-height:calc(70vh - 48px);}
+  .role-row{display:flex;gap:12px;align-items:flex-start;padding:10px 0;}
+  .role-card{
+    width:72px;height:108px;border-radius:10px;border:1px solid #ddd;background:#f8f8f8;
+    box-shadow:0 6px 16px rgba(0,0,0,.10);
+    flex:0 0 auto;
+    display:flex;align-items:center;justify-content:center;
+    font-size:12px;font-weight:700;color:#444;
+  }
+  .role-desc{flex:1 1 auto;}
+  .role-desc .name{font-weight:900;margin-bottom:4px;}
+  .role-desc .text{font-size:13px;line-height:1.55;color:#222;white-space:pre-wrap;}
+
+  .discard-clip{
+    position:absolute;
+    left:50%;
+    top:50%;
+    transform:translate(-50%,-50%) translateY(20px);
+    width:10px;height:10px;
+    border-radius:14px;
+    overflow:hidden;
+    z-index:5;
+    pointer-events:auto;
+    background:transparent;
+  }
+
+  .discard-overlay{
+    position:absolute;
+    left:50%;
+    top:50%;
+    transform:translate(-50%,-50%) translateY(20px);
+    width:10px;height:10px;
+    overflow:visible;
+    z-index:8;
+    pointer-events:auto;
+  }
+
+  .hint-overlay{
+    position:absolute;
+    left:50%;
+    top:50%;
+    transform:translate(-50%,-50%) translateY(20px);
+    width:10px;height:10px;
+    overflow:visible;
+    z-index:9;
+    pointer-events:none;
+  }
+  .drop-hint-box{
+    position:absolute;
+    border-radius:12px;
+    background:rgba(80, 160, 255, .18);
+  }
+
+  .discard-area{
+    position:absolute;
+    left:50%;
+    top:50%;
+    transform:translate(-50%,-50%);
+    display:grid;
+    grid-template-columns:repeat(2, 42px);
+    gap:55px 55px;
+    justify-content:center;
+    align-content:center;
+    padding:16px;
+    border-radius:14px;
+    background:rgba(255,255,255,.55);
+    box-shadow:0 10px 24px rgba(0,0,0,.10);
+    backdrop-filter:blur(4px);
+    z-index:5;
+    pointer-events:auto;
+  }
+
+  .discard-frame{
+    position:absolute;
+    left:50%;
+    top:50%;
+    transform:translate(-50%,-50%) translateY(20px);
+    width:10px;height:10px;
+    border-radius:14px;
+    background:url('obaketable.jpg') center/cover no-repeat;
+    border:none;
+    z-index:7;
+    pointer-events:none;
+    box-sizing:border-box;
+  }
+
+  .discard-slot{
+    width:42px;
+    height:62px;
+    border:2px dashed rgba(0,0,0,.35);
+    border-radius:12px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    position:relative;
+    overflow:visible;
+    box-sizing:border-box;
+  }
+  .discard-slot.drop-hover{ outline:none !important; outline-offset:0 !important; }
+  .discard-slot.drop-bad{ outline:none !important; outline-offset:0 !important; }
+
+  .pile{ position:absolute; width:42px;height:62px; pointer-events:auto; }
+
+  .pile .layer{
+    position:absolute;
+    left:0;top:0;
+    width:42px;height:62px;
+    border-radius:10px;
+    background:var(--card-frame);
+    box-shadow:0 3px 10px rgba(0,0,0,.16);
+    opacity:1;
+    overflow:hidden;
+    pointer-events:none;
+  }
+  .pile .layer::after{
+    content:'';
+    position:absolute;
+    inset:3px;
+    border-radius:8px;
+    background:#fff;
+    opacity:1;
+  }
+
+  .discard-card{
+    position:absolute;
+    left:0;top:0;
+    width:42px;height:62px;
+    border-radius:10px;
+    background:var(--card-frame);
+    box-shadow:0 4px 12px rgba(0,0,0,.22);
+    overflow:hidden;
+    cursor:grab;
+    touch-action:none;
+    user-select:none;
+  }
+  .discard-card.dragging{opacity:.35; cursor:grabbing;}
+  .discard-card .inner{
+    position:absolute;
+    inset:3px;
+    border-radius:8px;
+    background:var(--card-fill, #fff);
+    overflow:hidden;
+  }
+  .discard-card .num{
+    position:absolute;
+    left:50%;
+    top:50%;
+    transform:translate(-50%,-50%) translateY(-7px);
+    font-size:20px;
+    font-weight:900;
+    line-height:1;
+    color:#fff;
+    font-family:
+      "Comic Sans MS",
+      "Hiragino Maru Gothic ProN",
+      "Arial Rounded MT Bold",
+      system-ui, sans-serif;
+    -webkit-text-stroke: 1px #000;
+    text-shadow:
+      0 1px 0 #000,
+      1px 0 0 #000,
+      0 -1px 0 #000,
+      -1px 0 0 #000;
+    pointer-events:none;
+    user-select:none;
+    z-index:1;
+  }
+  .discard-card .role{
+    position:absolute;
+    left:50%;
+    top:50%;
+    transform:translate(calc(-50% + 13px), calc(-50% - 8px));
+    writing-mode:vertical-rl;
+    text-orientation:upright;
+    font-weight:900;
+    font-size:9px;
+    line-height:1.05;
+    color:#111;
+    text-shadow:
+      0 1px 0 rgba(255,255,255,.9),
+      1px 0 0 rgba(255,255,255,.9),
+      0 -1px 0 rgba(255,255,255,.9),
+      -1px 0 0 rgba(255,255,255,.9);
+    pointer-events:none;
+    user-select:none;
+    z-index:3;
+    opacity:.95;
+    white-space:nowrap;
+  }
+
+  .discard-card .art{
+    position:absolute;
+    left:50%;
+    top:40%;
+    transform:translateX(-50%);
+    width:170%;
+    height:60%;
+    object-fit:contain;
+    pointer-events:none;
+    user-select:none;
+    z-index:2;
+  }
+
+  .discard-count{
+    position:absolute;right:6px;bottom:5px;
+    font-size:11px;font-weight:800;
+    background:rgba(17,17,17,.82);color:#fff;
+    padding:2px 6px;border-radius:999px;
+  }
+
+  .deck-center{
+    position:absolute;
+    left:50%;
+    top:50%;
+    transform:translate(-50%,-50%) translate(-2px, 15px);
+    width:10px;height:10px;
+    z-index:10;
+    pointer-events:none;
+    overflow:visible;
+  }
+
+  .deck-stack{
+    width:62px;height:42px;
+    position:absolute;
+    left:50%; top:50%;
+    transform:translate(-50%,-50%);
+    border-radius:10px;
+    pointer-events:auto;
+    cursor:pointer;
+  }
+  .deck-stack.empty{
+    outline:1px dashed rgba(0,0,0,.35);
+    outline-offset:-4px;
+    background:rgba(20,20,20,.10);
+    box-shadow:none;
+  }
+
+  .deck-layer{
+    position:absolute; inset:0;
+    border-radius:10px;
+    border:1px solid rgba(0,0,0,.75);
+    box-shadow:none;
+    overflow:hidden;
+    background:none;
+    transform-origin:center;
+  }
+  .deck-layer::before{
+    content:'';
+    position:absolute;
+    inset:-10px;
+    background:var(--card-back-image) center/contain no-repeat;
+    transform:rotate(90deg);
+    transform-origin:center;
+  }
+  .deck-layer::after{ content:none; }
+
+  .deck-count{
+    position:absolute; right:-6px; top:-8px;
+    min-width:22px;height:18px;padding:0 6px;
+    display:flex;align-items:center;justify-content:center;
+    border-radius:999px;
+    background:rgba(0,0,0,.55);
+    color:#fff;font-size:11px;font-weight:900;
+    text-shadow:none;
+    border:1px solid rgba(255,255,255,.25);
+    pointer-events:none;
+    display:none;
+  }
+
+  .endturn-backdrop{
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,0);
+    z-index:260;
+    display:flex;
+    align-items:flex-end;
+    justify-content:center;
+    padding:12px;
+  }
+  .endturn-backdrop.hidden{display:none;}
+  .endturn-pop{
+    background:#6b3f2a;
+    color:#fff;
+    border:1px solid rgba(255,255,255,.18);
+    border-radius:14px;
+    box-shadow:0 18px 40px rgba(0,0,0,.35);
+    padding:12px 14px;
+    min-width:200px;
+    max-width:220px;
+    width:min(520px, calc(100% - 24px));
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+  }
+  .endturn-pop .msg{
+    font-weight:900;
+    font-size:14px;
+    letter-spacing:.02em;
+    white-space:nowrap;
+  }
+  .endturn-pop .actions{display:flex;gap:8px;align-items:center;}
+  .btn.endturn-yes{
+    background:#fff;
+    color:#6b3f2a;
+    border-color:#fff;
+    font-weight:900;
+  }
+
+  .drag-ghost{
+    position:fixed;
+    left:0;top:0;
+    transform:translate(-9999px,-9999px);
+    z-index:9999;
+    pointer-events:none;
+  }
+
+  /* =========================
+     ★ fly-card（移動演出）
+     ========================= */
+  .fly-card{
+    position:fixed;
+    width:42px;height:62px;
+    border-radius:10px;
+    background:var(--card-frame);
+    box-shadow:0 10px 22px rgba(0,0,0,.25);
+    z-index:9998;
+    pointer-events:none;
+    will-change:transform;
+    overflow:hidden;
+  }
+  .fly-card.back::after{
+    content:'';
+    position:absolute;
+    inset:3px;
+    border-radius:8px;
+    background:var(--card-back-image) center/cover no-repeat;
+  }
+  .fly-card .inner{
+    position:absolute;
+    inset:3px;
+    border-radius:8px;
+    background:var(--card-fill, #fff);
+    overflow:hidden;
+  }
+
+  .fly-card .num{
+    position:absolute;
+    left:50%;
+    top:50%;
+    transform:translate(-50%,-50%) translateY(-7px);
+    font-size:20px;
+    font-weight:900;
+    line-height:1;
+    color:#fff;
+    font-family:
+      "Comic Sans MS",
+      "Hiragino Maru Gothic ProN",
+      "Arial Rounded MT Bold",
+      system-ui, sans-serif;
+    -webkit-text-stroke: 1px #000;
+    text-shadow:
+      0 1px 0 #000,
+      1px 0 0 #000,
+      0 -1px 0 #000,
+      -1px 0 0 #000;
+    pointer-events:none;
+    user-select:none;
+    z-index:1;
+  }
+  .fly-card .role{
+    position:absolute;
+    left:50%;
+    top:50%;
+    transform:translate(calc(-50% + 13px), calc(-50% - 8px));
+    writing-mode:vertical-rl;
+    text-orientation:upright;
+    font-weight:900;
+    font-size:9px;
+    line-height:1.05;
+    color:#111;
+    text-shadow:
+      0 1px 0 rgba(255,255,255,.9),
+      1px 0 0 rgba(255,255,255,.9),
+      0 -1px 0 rgba(255,255,255,.9),
+      -1px 0 0 rgba(255,255,255,.9);
+    pointer-events:none;
+    user-select:none;
+    z-index:3;
+    white-space:nowrap;
+    opacity:.95;
+  }
+  .fly-card .art{
+    position:absolute;
+    left:50%;
+    top:40%;
+    transform:translateX(-50%);
+    width:170%;
+    height:60%;
+    object-fit:contain;
+    pointer-events:none;
+    user-select:none;
+    z-index:2;
+  }
+
+  /* =========================
+     ★ 死の宣告：中央拡大＋ちょい振動（停止演出）
+     変更点:
+     1) 拡大カードを「手札カードと同じ比率/配置」にするため、buildFaceCardNodeをそのまま使う
+        → doom側は card-shell を 60x90基準のまま “scale” で拡大（=文字/画像の比率が完全一致）
+     2) スタートボタン等を押せるように、doom-backdrop は pointer-events:none（前に出るけどクリックは通す）
+        + doom-card-wrap も pointer-events:none（完全に操作を邪魔しない）
+     ========================= */
+  .doom-backdrop{
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,.55);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    z-index:245;               /* ★ start-pop(240) より少し上だが… */
+    pointer-events:none;       /* ★ クリックを絶対に邪魔しない */
+    padding:16px;
+  }
+  .doom-backdrop.hidden{display:none;}
+
+  @keyframes doomZoomIn {
+    0%   { transform:translateY(8px) scale(.78); opacity:0; }
+    100% { transform:translateY(0px) scale(1); opacity:1; }
+  }
+  @keyframes doomShake {
+    0%   { transform:translate(0,0) rotate(0deg); }
+    10%  { transform:translate(-2px,1px) rotate(-0.6deg); }
+    20%  { transform:translate(2px,-1px) rotate(0.6deg); }
+    30%  { transform:translate(-2px,-1px) rotate(-0.6deg); }
+    40%  { transform:translate(2px,1px) rotate(0.6deg); }
+    50%  { transform:translate(-1px,1px) rotate(-0.3deg); }
+    60%  { transform:translate(1px,-1px) rotate(0.3deg); }
+    70%  { transform:translate(-1px,-1px) rotate(-0.3deg); }
+    80%  { transform:translate(1px,1px) rotate(0.3deg); }
+    90%  { transform:translate(-1px,0px) rotate(-0.2deg); }
+    100% { transform:translate(0,0) rotate(0deg); }
+  }
+
+  .doom-box{
+    width:min(320px, 92vw);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:10px;
+    animation:doomZoomIn .28s cubic-bezier(.22,.84,.44,1) both;
+    pointer-events:none; /* ★ これもクリックを邪魔しない */
+  }
+  .doom-card-wrap{
+    transform-origin:center;
+    animation:doomShake .55s ease-in-out infinite;
+    filter:drop-shadow(0 20px 40px rgba(0,0,0,.45));
+    pointer-events:none; /* ★ クリックを邪魔しない */
+  }
+  .doom-title{
+    color:#fff;
+    font-weight:900;
+    letter-spacing:.02em;
+    text-shadow:0 2px 10px rgba(0,0,0,.45);
+    font-size:14px;
+    white-space:nowrap;
+    pointer-events:none;
+  }
+  .doom-sub{
+    color:rgba(255,255,255,.85);
+    font-size:12px;
+    text-align:center;
+    line-height:1.55;
+    pointer-events:none;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>テンプレ</h1>
+  <div style="display:flex;align-items:center;gap:6px;">
+    <div class="small" id="roomInfo"></div>
+    <button class="btn ghost" id="copyLinkBtn">COPY</button>
+  </div>
+</header>
+
+<main id="main" class="prejoin">
+  <div class="join-box" id="joinBox">
+    <input id="userName" placeholder="名前（4文字以内）" maxlength="4" />
+    <input id="roomCode" placeholder="ルームコード（未入力で自動生成）" maxlength="12" />
+    <button class="btn primary" id="btnJoin">入室</button>
+  </div>
+
+  <div id="lobby" class="hidden">
+    <h2>ロビー</h2>
+    <div id="roomInfoLobby" style="margin-bottom:8px;"></div>
+    <p>ここにテーブルや情報が表示されます。</p>
+
+    <div id="playerCircle" class="player-circle">
+      <div id="discardFrame" class="discard-frame" aria-hidden="true"></div>
+      <div id="discardOverlay" class="discard-overlay" aria-hidden="true"></div>
+      <div id="hintOverlay" class="hint-overlay" aria-hidden="true"></div>
+
+      <div id="discardClip" class="discard-clip" aria-label="捨て札クリップ">
+        <div id="discardArea" class="discard-area" aria-label="捨て札エリア">
+          <div class="discard-slot" data-slot="0"></div>
+          <div class="discard-slot" data-slot="1"></div>
+          <div class="discard-slot" data-slot="2"></div>
+          <div class="discard-slot" data-slot="3"></div>
+        </div>
+      </div>
+
+      <div id="deckCenter" class="deck-center" aria-label="山札">
+        <div id="deckStack" class="deck-stack" title="山札（クリック）"></div>
+      </div>
+    </div>
+
+    <div class="my-hand-wrapper">
+      <div class="my-hand-title">自分のカード</div>
+      <div id="myHand" class="my-hand"></div>
+    </div>
+  </div>
+</main>
+
+<div id="hostSelectingPop" class="host-selecting-pop hidden">ホストが人数を選択中</div>
+
+<div id="seatPop" class="seat-pop hidden">
+  <div class="row"><label>席を選択</label><div id="seatTabs" class="tabs"></div></div>
+  <div class="row" style="justify-content:flex-end">
+    <button class="btn small ghost" id="btnSeatCancel">観戦</button>
+  </div>
+</div>
+
+<div id="kickDialog" class="dialog-backdrop hidden">
+  <div class="dialog-box" id="kickDialogBox">
+    <p id="kickMessage">既存のプレイヤーを追い出して、着席しますか？</p>
+    <div class="dialog-buttons">
+      <button class="btn ghost" id="btnKickNo">いいえ</button>
+      <button class="btn primary" id="btnKickYes">はい</button>
+    </div>
+  </div>
+</div>
+
+<button id="hostSettingsBtn" class="host-settings-btn" title="設定">⚙</button>
+<button id="helpBtn" class="help-btn" title="正体カード一覧">？</button>
+
+<div id="helpBackdrop" class="help-pop-backdrop hidden">
+  <div class="help-pop" role="dialog" aria-modal="true" aria-label="正体カード一覧">
+    <div class="help-pop-header">
+      <div class="help-pop-title">正体カード</div>
+      <button id="btnHelpClose" class="btn ghost" style="padding:2px 6px;font-size:12px;">×</button>
+    </div>
+    <div class="help-pop-body" id="helpBody"></div>
+  </div>
+</div>
+
+<div id="startPop" class="start-pop hidden">
+  <div class="start-pop-header">
+    <div class="start-pop-title">ホスト設定</div>
+    <button id="btnStartPopClose" class="btn ghost" style="padding:2px 6px;font-size:12px;">×</button>
+  </div>
+  <div class="start-pop-main">
+    「スタート」で全プレイヤーにカードを配布。<br>
+    デッキ：2〜99（各1枚）。<br>
+    配布：1人=8枚 / 2人=7枚 / 3人以上=6枚。<br>
+    ★ ルール：手番では <b>2枚以上捨て札</b> しないと山札を引けません。<br>
+    ★ 山札クリック：確認→「はい」で最大枚数までドロー → 次のプレイヤーへ。<br>
+    ★ 捨て札ルール：上2枚(スロット0,1)は大きい数のみ／下2枚(2,3)は小さい数のみ。<br>
+    ★ 例外：<b>±10</b>（差がちょうど10）のときは方向を無視して置ける。<br>
+    <br>
+    ★ 表面色：スタート時にランダムで塗り分け（再スタートまで維持）<br>
+    ★ 追加：スタート時にランダムで一部カードに縦書き効果名が付く<br>
+    ★ 追加：<b>自分が捨てた（ドラッグした）一番上の捨て札</b>は、手番中に別スロットへ置き直せる<br>
+    ★ 追加：<b>死の宣告</b>：次のプレイヤーの手番終了時、上にカードが乗っていなければ中央拡大して全手番停止
+  </div>
+  <div class="start-pop-actions">
+    <button id="btnResetRoom" class="btn ghost">リセット</button>
+    <button id="btnGameStart" class="btn primary">スタート</button>
+  </div>
+</div>
+
+<div id="endTurnBackdrop" class="endturn-backdrop hidden" aria-hidden="true">
+  <div id="endTurnPop" class="endturn-pop" role="dialog" aria-modal="true" aria-label="手番終了確認">
+    <div class="msg">手番を終わりますか。</div>
+    <div class="actions">
+      <button id="btnEndTurnYes" class="btn endturn-yes">はい</button>
+    </div>
+  </div>
+</div>
+
+<div id="dragGhost" class="drag-ghost"></div>
+
+<!-- ★ 死の宣告：停止演出（中央拡大） -->
+<div id="doomBackdrop" class="doom-backdrop hidden" aria-hidden="true">
+  <div class="doom-box" role="dialog" aria-modal="true" aria-label="死の宣告">
+    <div class="doom-title">死の宣告</div>
+    <div id="doomCardWrap" class="doom-card-wrap"></div>
+    <div class="doom-sub">このカードの上に置かれなかった。<br>全員の手番を停止。</div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+import {
+  getDatabase, ref, set, get, update, onValue, remove
+} from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDUP1foVQnitM45do_UtYLkcc9gvgQC-xw",
+  authDomain: "timebomb-3b0c7.firebaseapp.com",
+  databaseURL: "https://timebomb-3b0c7-default-rtdb.firebaseio.com",
+  projectId: "timebomb-3b0c7",
+  storageBucket: "timebomb-3b0c7.firebasestorage.app",
+  messagingSenderId: "532935786630",
+  appId: "1:532935786630:web:ef1f97c862bfaad67d1107",
+  measurementId: "G-K8NRR8K64Y"
+};
+
+const app = initializeApp(firebaseConfig);
+const db  = getDatabase(app);
+
+const savedUserId = sessionStorage.getItem('bbUserId') || crypto.randomUUID();
+sessionStorage.setItem('bbUserId', savedUserId);
+
+const COLOR_POOL = [
+  "#2e446d",
+  "#302430",
+  "#a28d3c",
+  "#2d1d27",
+  "#2e446d",
+  "#5d3c35",
+];
+
+let delayedFullSortTimer = null;
+let delayedFullSortToken = 0;
+
+let prevHandsSnapshot = {};
+let drawAnimMap = new Map();
+
+let suppressNextHandsAnim = false;
+let lastSuppressDealTokenSeen = 0;
+
+const state = {
+  userId: savedUserId,
+  userName: null,
+  roomCode: null,
+  seatedTable: null,
+  isHost: false,
+  hands: {},
+  room: {},
+  discards: { slots: {0:[],1:[],2:[],3:[]}, lastMove: null },
+  deckRemaining: [],
+  game: null,
+  lastSeenMoveTs: 0,
+  cardColors: null,
+  specialRoles: null,
+  animatingMove: null,
+  lastMyHandRects: null,
+  lastDoomTriggeredAt: 0,
+};
+
+const mainEl = document.getElementById('main');
+const joinBox = document.getElementById('joinBox');
+const inputName = document.getElementById('userName');
+const inputCode = document.getElementById('roomCode');
+const btnJoin = document.getElementById('btnJoin');
+const lobby = document.getElementById('lobby');
+const roomInfo = document.getElementById('roomInfo');
+const roomInfoLobby = document.getElementById('roomInfoLobby');
+const copyLinkBtn = document.getElementById('copyLinkBtn');
+
+const hostSelectingPop = document.getElementById('hostSelectingPop');
+
+const seatPop = document.getElementById('seatPop');
+const seatTabs = document.getElementById('seatTabs');
+const btnSeatCancel = document.getElementById('btnSeatCancel');
+const seatLabel = seatPop.querySelector('label');
+
+const playerCircle = document.getElementById('playerCircle');
+const myHandEl = document.getElementById('myHand');
+
+const discardArea = document.getElementById('discardArea');
+const discardFrame = document.getElementById('discardFrame');
+const discardClip = document.getElementById('discardClip');
+const discardOverlay = document.getElementById('discardOverlay');
+const hintOverlay = document.getElementById('hintOverlay');
+
+const deckCenter = document.getElementById('deckCenter');
+const deckStack  = document.getElementById('deckStack');
+
+const dragGhost = document.getElementById('dragGhost');
+
+const kickDialog = document.getElementById('kickDialog');
+const kickMessage = document.getElementById('kickMessage');
+const btnKickYes = document.getElementById('btnKickYes');
+const btnKickNo = document.getElementById('btnKickNo');
+
+const hostSettingsBtn = document.getElementById('hostSettingsBtn');
+const startPop = document.getElementById('startPop');
+const btnStartPopClose = document.getElementById('btnStartPopClose');
+const btnGameStart = document.getElementById('btnGameStart');
+const btnResetRoom = document.getElementById('btnResetRoom');
+
+const helpBtn = document.getElementById('helpBtn');
+const helpBackdrop = document.getElementById('helpBackdrop');
+const btnHelpClose = document.getElementById('btnHelpClose');
+const helpBody = document.getElementById('helpBody');
+
+const endTurnBackdrop = document.getElementById('endTurnBackdrop');
+const endTurnPop = document.getElementById('endTurnPop');
+const btnEndTurnYes = document.getElementById('btnEndTurnYes');
+
+const doomBackdrop = document.getElementById('doomBackdrop');
+const doomCardWrap = document.getElementById('doomCardWrap');
+
+const ROLE_HELP = [
+  { name: "カード1", text: "ああああ" },
+  { name: "カード2", text: "いいいい" },
+  { name: "カード3", text: "うううう" },
+  { name: "カード4", text: "うううう" },
+];
+
+function renderHelpList(){
+  helpBody.innerHTML = '';
+  ROLE_HELP.forEach((r, idx) => {
+    const row = document.createElement('div');
+    row.className = 'role-row';
+
+    const card = document.createElement('div');
+    card.className = 'role-card';
+    card.textContent = `CARD ${idx+1}`;
+
+    const desc = document.createElement('div');
+    desc.className = 'role-desc';
+    desc.innerHTML = `
+      <div class="name">${r.name}</div>
+      <div class="text">${r.text}</div>
+    `;
+
+    row.appendChild(card);
+    row.appendChild(desc);
+    helpBody.appendChild(row);
+  });
+}
+function openHelp(){ renderHelpList(); helpBackdrop.classList.remove('hidden'); }
+function closeHelp(){ helpBackdrop.classList.add('hidden'); }
+helpBtn.addEventListener('click', () => { if (joinBox.classList.contains('hidden')) openHelp(); });
+btnHelpClose.addEventListener('click', closeHelp);
+helpBackdrop.addEventListener('click', (e) => { if (e.target === helpBackdrop) closeHelp(); });
+
+function openEndTurnPop(){ endTurnBackdrop.classList.remove('hidden'); }
+function closeEndTurnPop(){ endTurnBackdrop.classList.add('hidden'); }
+endTurnBackdrop.addEventListener('click', (e) => { if (e.target === endTurnBackdrop) closeEndTurnPop(); });
+endTurnPop.addEventListener('click', (e) => e.stopPropagation());
+
+let pendingSeatIndexToSteal = null;
+let pendingSeatPlayerIdToSteal = null;
+let isRenderingSeatTabs = false;
+let latestPlayers = [];
+
+let dragging = null;
+let dragMoved = false;
+
+function generateRoomCode(length = 6){
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let code = '';
+  for(let i=0;i<length;i++) code += chars.charAt(Math.floor(Math.random()*chars.length));
+  return code;
+}
+
+async function restoreSeatFromDB(){
+  if (!state.roomCode) return;
+  const tablesRef = ref(db, `rooms/${state.roomCode}/tables`);
+  const snap = await get(tablesRef);
+  const data = snap.val() || {};
+  let mySeatIndex = null;
+
+  for (const [seatIndex, t] of Object.entries(data)) {
+    if (t && t.playerId === state.userId) {
+      mySeatIndex = Number(seatIndex);
+      break;
+    }
+  }
+  if (mySeatIndex !== null) state.seatedTable = mySeatIndex;
+}
+
+function refreshRoomLabels(){
+  if (!state.roomCode || !state.userName) return;
+  const label = state.isHost ? '（ホスト）' : '';
+  const infoText = ` ${state.roomCode},  ${state.userName}${label}`;
+  roomInfo.textContent = infoText;
+  roomInfoLobby.textContent = infoText;
+}
+function updateHostUI(){
+  refreshRoomLabels();
+  if (state.isHost){
+    hostSettingsBtn.classList.add('visible');
+  } else {
+    hostSettingsBtn.classList.remove('visible');
+    startPop.classList.add('hidden');
+  }
+  helpBtn.classList.add('visible');
+}
+
+function isFrozen(){ return !!(state.game?.frozen); }
+function isMyTurn(){ return !!(state.game?.started && !isFrozen() && state.game.currentPlayerId === state.userId); }
+function myTurnDiscardCount(){
+  const m = state.game?.turnDiscardCount || {};
+  return Number(m[state.userId] || 0);
+}
+function isShotActive(){ return !!(!isFrozen() && state.game?.shot?.active); }
+function amIShooter(){ return !!(!isFrozen() && state.game?.shot?.active && state.game.shot.by === state.userId); }
+
+function updateTurnUI(){
+  myHandEl.classList.toggle('turn-active', isMyTurn());
+  document.querySelectorAll('.player-tag').forEach(el => {
+    const pid = el.dataset.playerid;
+    el.classList.toggle('turn', !!(!isFrozen() && state.game?.started && pid && state.game.currentPlayerId === pid));
+  });
+  playerCircle.classList.toggle('shot-mode', isShotActive());
+}
+
+function subscribeCardColors(){
+  const colorsRef = ref(db, `rooms/${state.roomCode}/cardColors`);
+  onValue(colorsRef, snap => {
+    state.cardColors = snap.val() || null;
+    renderHands();
+    renderDiscards();
+  });
+}
+function subscribeSpecialRoles(){
+  const rolesRef = ref(db, `rooms/${state.roomCode}/specialRoles`);
+  onValue(rolesRef, snap => {
+    state.specialRoles = snap.val() || null;
+    renderHands();
+    renderDiscards();
+  });
+}
+
+function getCardFillColor(v){
+  const key = String(v);
+  return (state.cardColors && state.cardColors[key]) ? state.cardColors[key] : "#ffffff";
+}
+function getCardRoleText(v){
+  const key = String(v);
+  return (state.specialRoles && state.specialRoles[key]) ? String(state.specialRoles[key]) : "";
+}
+
+/* =========================
+   ★ 死の宣告：中央拡大表示
+   変更点:
+   - 180x270 の別サイズで作らず、手札と同じ 60x90 を作って “scale” で拡大
+     → 数字/縦文字/画像の比率が完全一致する
+   ========================= */
+function showDoomIfNeeded(){
+  const doom = state.game?.doom || null;
+  const frozen = !!state.game?.frozen;
+
+  if (!frozen || !doom || !doom.triggeredAt){
+    doomBackdrop.classList.add('hidden');
+    doomBackdrop.setAttribute('aria-hidden', 'true');
+    return;
+  }
+
+  if (state.lastDoomTriggeredAt === Number(doom.triggeredAt || 0) && !doomBackdrop.classList.contains('hidden')){
+    return;
+  }
+  state.lastDoomTriggeredAt = Number(doom.triggeredAt || 0);
+
+  doomCardWrap.innerHTML = '';
+
+  // ★手札と同じ比率で作り、拡大は scale で行う
+  const baseW = 60, baseH = 90;
+  const big = buildFaceCardNode(Number(doom.card), baseW, baseH);
+
+  // 表示したい“見た目サイズ”に合わせてスケールを決定（比率は固定）
+  const targetW = 180;                 // 見た目の幅（好きに調整OK）
+  const scale = targetW / baseW;       // 60→180 なら 3.0
+  big.style.transform = `scale(${scale})`;
+  big.style.transformOrigin = 'center';
+
+  // 操作を邪魔しない（クリックは全部背面へ通る）
+  big.style.cursor = 'default';
+  big.style.pointerEvents = 'none';
+  big.style.touchAction = 'none';
+
+  doomCardWrap.appendChild(big);
+
+  doomBackdrop.classList.remove('hidden');
+  doomBackdrop.setAttribute('aria-hidden', 'false');
+}
+
+function subscribeRoom(){
+  const roomRef = ref(db, `rooms/${state.roomCode}`);
+  onValue(roomRef, snap => {
+    state.room = snap.val() || {};
+    const waiting = (!state.isHost && !state.room.maxPlayers);
+    hostSelectingPop.classList.toggle('hidden', !waiting);
+    syncSeatUI();
+  });
+}
+function subscribeHostState(){
+  const hostRef = ref(db, `rooms/${state.roomCode}/hostId`);
+  onValue(hostRef, snap => {
+    const hostId = snap.val();
+    state.isHost = (hostId === state.userId);
+    updateHostUI();
+    syncSeatUI();
+  });
+}
+
+function subscribeInitialDealNoAnim(){
+  const tokRef = ref(db, `rooms/${state.roomCode}/suppressDealToken`);
+  onValue(tokRef, snap => {
+    const tok = Number(snap.val() || 0);
+    if (!tok) return;
+    if (tok <= lastSuppressDealTokenSeen) return;
+    lastSuppressDealTokenSeen = tok;
+
+    suppressNextHandsAnim = true;
+    drawAnimMap.clear();
+  });
+}
+
+function detectHandDiffAndAnimate(prevHands, nextHands){
+  if (suppressNextHandsAnim) {
+    suppressNextHandsAnim = false;
+    return;
+  }
+  if (!nextHands) return;
+
+  const now = Date.now();
+
+  for (const [pid, h] of Object.entries(nextHands)){
+    const next = (h && Array.isArray(h.cards)) ? h.cards.map(Number) : [];
+    const prev = (prevHands?.[pid] && Array.isArray(prevHands[pid].cards)) ? prevHands[pid].cards.map(Number) : [];
+
+    if (next.length <= prev.length) continue;
+
+    const prevSet = new Set(prev);
+    const added = next.filter(v => !prevSet.has(v));
+    if (!added.length) continue;
+
+    if (pid === state.userId){
+      drawAnimMap.set(pid, { values: new Set(added), expiresAt: now + 700 });
+      setTimeout(() => {
+        const cur = drawAnimMap.get(pid);
+        if (cur && cur.expiresAt <= Date.now()) drawAnimMap.delete(pid);
+      }, 750);
+    }
+
+    added.forEach((val, idx) => {
+      setTimeout(() => { animateDeckToPlayer(pid, val); }, idx * 90);
+    });
+  }
+}
+
+function subscribeHands(){
+  const handsRef = ref(db, `rooms/${state.roomCode}/hands`);
+  onValue(handsRef, snap => {
+    const next = snap.val() || {};
+    const prev = prevHandsSnapshot || {};
+    prevHandsSnapshot = next;
+
+    const prevCopy = JSON.parse(JSON.stringify(prev || {}));
+    state.hands = next;
+    renderHands();
+
+    requestAnimationFrame(() => {
+      detectHandDiffAndAnimate(prevCopy, next);
+    });
+  });
+}
+
+function normalizeDiscardEntry(e){
+  if (typeof e === 'number') return { v: Number(e), by: null, ts: null };
+  if (e && typeof e === 'object'){
+    const v = ('v' in e) ? Number(e.v) : (('value' in e) ? Number(e.value) : Number.NaN);
+    const by = (typeof e.by === 'string') ? e.by : (typeof e.ownerId === 'string' ? e.ownerId : null);
+    const ts = ('ts' in e) ? Number(e.ts) : null;
+    return { v, by, ts: Number.isFinite(ts) ? ts : null };
+  }
+  return { v: Number.NaN, by: null, ts: null };
+}
+function getTopValueFromPile(pile){
+  if (!Array.isArray(pile) || pile.length === 0) return null;
+  const t = normalizeDiscardEntry(pile[pile.length - 1]);
+  return Number.isFinite(t.v) ? t.v : null;
+}
+function getTopEntryFromPile(pile){
+  if (!Array.isArray(pile) || pile.length === 0) return null;
+  const t = normalizeDiscardEntry(pile[pile.length - 1]);
+  if (!Number.isFinite(t.v)) return null;
+  return t;
+}
+
+function subscribeDiscards(){
+  const discRef = ref(db, `rooms/${state.roomCode}/discards`);
+  onValue(discRef, snap => {
+    const val = snap.val();
+    state.discards = val || { slots: {0:[],1:[],2:[],3:[]}, lastMove: null };
+
+    maybeAnimateOtherPlayerDiscard();
+    renderDiscards();
+    updateDiscardFrameAndClipSize();
+  });
+}
+
+function subscribeDeckRemaining(){
+  const deckRef = ref(db, `rooms/${state.roomCode}/deckRemaining`);
+  onValue(deckRef, snap => {
+    state.deckRemaining = snap.val() || [];
+    renderDeckCenter();
+  });
+}
+function subscribeGame(){
+  const gameRef = ref(db, `rooms/${state.roomCode}/game`);
+  onValue(gameRef, snap => {
+    state.game = snap.val() || null;
+
+    updateTurnUI();
+    if (latestPlayers.length) renderPlayerCircle(latestPlayers);
+    renderDeckCenter();
+
+    showDoomIfNeeded();
+  });
+}
+
+function canPlaceOnSlot(cardValue, slotIndex, slotsObj){
+  const pile = Array.isArray(slotsObj?.[slotIndex]) ? slotsObj[slotIndex] : [];
+  if (pile.length === 0) return true;
+
+  const top = getTopValueFromPile(pile);
+  const v   = Number(cardValue);
+  if (top === null || Number.isNaN(v)) return false;
+
+  const diff10 = Math.abs(v - top) === 10;
+  if (diff10) return true;
+
+  if (slotIndex === 0 || slotIndex === 1) return v > top;
+  if (slotIndex === 2 || slotIndex === 3) return v < top;
+  return false;
+}
+
+function pointInRect(x, y, r){ return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom; }
+function getSlotByRectHit(x, y){
+  const slots = [...discardArea.querySelectorAll('.discard-slot')];
+  for (const slotEl of slots){
+    const r = slotEl.getBoundingClientRect();
+    if (pointInRect(x, y, r)) return slotEl;
+  }
+  return null;
+}
+function getSlotElementUnderPoint(x,y){
+  const el = document.elementFromPoint(x,y);
+  const domHit = el?.closest?.('.discard-slot') || null;
+  if (domHit) return domHit;
+  return getSlotByRectHit(x, y);
+}
+
+function makeHypotheticalSlotsForDrag(){
+  const src = state.discards?.slots || {0:[],1:[],2:[],3:[]};
+  const slots = {
+    0: Array.isArray(src[0]) ? [...src[0]] : [],
+    1: Array.isArray(src[1]) ? [...src[1]] : [],
+    2: Array.isArray(src[2]) ? [...src[2]] : [],
+    3: Array.isArray(src[3]) ? [...src[3]] : [],
+  };
+
+  if (dragging?.source === 'discard' && Number.isFinite(Number(dragging.fromSlot))){
+    const fs = Number(dragging.fromSlot);
+    if ([0,1,2,3].includes(fs) && slots[fs].length){
+      slots[fs].pop();
+    }
+  }
+  return slots;
+}
+
+function setDropHintForAllSlots(){
+  if (!hintOverlay) return;
+  hintOverlay.innerHTML = '';
+  if (!dragging) return;
+
+  const slotsObj = makeHypotheticalSlotsForDrag();
+  const overlayRect = hintOverlay.getBoundingClientRect();
+  const slots = [...discardArea.querySelectorAll('.discard-slot')];
+
+  slots.forEach(slotEl => {
+    const i = Number(slotEl.dataset.slot);
+    if (![0,1,2,3].includes(i)) return;
+
+    if (dragging.source === 'discard' && Number.isFinite(Number(dragging.fromSlot)) && i === Number(dragging.fromSlot)) return;
+
+    const ok = canPlaceOnSlot(dragging.cardValue, i, slotsObj);
+    if (!ok) return;
+
+    const r = slotEl.getBoundingClientRect();
+    const pad = 16;
+    const x = (r.left - overlayRect.left) - pad;
+    const y = (r.top  - overlayRect.top)  - pad;
+
+    const box = document.createElement('div');
+    box.className = 'drop-hint-box';
+    box.style.left = `${x}px`;
+    box.style.top  = `${y}px`;
+    box.style.width  = `${r.width + pad*2}px`;
+    box.style.height = `${r.height + pad*2}px`;
+
+    hintOverlay.appendChild(box);
+  });
+}
+function clearDropHints(){ if (!hintOverlay) return; hintOverlay.innerHTML = ''; }
+
+function getObaImageSrc(value){
+  const v = Number(value);
+  const ones = Number.isFinite(v) ? Math.abs(v) % 10 : 0;
+  return `oba${ones}.png`;
+}
+
+function buildFaceCardNode(value, w=60, h=90){
+  const shell = document.createElement('div');
+  shell.className = 'card-shell';
+  shell.style.width = `${w}px`;
+  shell.style.height = `${h}px`;
+  shell.style.setProperty('--card-fill', getCardFillColor(value));
+
+  const face = document.createElement('div');
+  face.className = 'card-face';
+
+  const num = document.createElement('div');
+  num.className = 'card-number';
+  num.textContent = String(value);
+
+  const roleText = getCardRoleText(value);
+  if (roleText){
+    const role = document.createElement('div');
+    role.className = 'card-role';
+    role.textContent = roleText;
+    face.appendChild(role);
+  }
+
+  const art = document.createElement('img');
+  art.className = 'card-art';
+  art.src = getObaImageSrc(value);
+  art.alt = '';
+
+  face.appendChild(num);
+  face.appendChild(art);
+  shell.appendChild(face);
+  return shell;
+}
+
+function buildSmallFaceInner(value){
+  const inner = document.createElement('div');
+  inner.className = 'inner';
+  inner.style.setProperty('--card-fill', getCardFillColor(value));
+  inner.style.background = getCardFillColor(value);
+
+  const num = document.createElement('div');
+  num.className = 'num';
+  num.textContent = String(value);
+
+  const roleText = getCardRoleText(value);
+  if (roleText){
+    const role = document.createElement('div');
+    role.className = 'role';
+    role.textContent = roleText;
+    inner.appendChild(role);
+  }
+
+  const art = document.createElement('img');
+  art.className = 'art';
+  art.src = getObaImageSrc(value);
+  art.alt = '';
+
+  inner.appendChild(num);
+  inner.appendChild(art);
+  return inner;
+}
+
+function snapshotMyHandRects(){
+  const map = new Map();
+  myHandEl.querySelectorAll('.card-wrap').forEach(wrap => {
+    const v = Number(wrap.dataset.cardValue);
+    if (!Number.isFinite(v)) return;
+    map.set(v, wrap.getBoundingClientRect());
+  });
+  return map;
+}
+function playFLIP(oldMap){
+  if (!oldMap || oldMap.size === 0) return;
+
+  myHandEl.querySelectorAll('.card-wrap').forEach(wrap => {
+    const v = Number(wrap.dataset.cardValue);
+    const oldR = oldMap.get(v);
+    if (!oldR) return;
+
+    const newR = wrap.getBoundingClientRect();
+    const dx = oldR.left - newR.left;
+    const dy = oldR.top  - newR.top;
+
+    if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) return;
+
+    wrap.style.transition = 'none';
+    wrap.style.transform = `translate(${dx}px, ${dy}px)`;
+    wrap.getBoundingClientRect();
+
+    requestAnimationFrame(() => {
+      wrap.style.transition = 'transform 360ms cubic-bezier(.22,.84,.44,1)';
+      wrap.style.transform = 'translate(0px,0px)';
+      setTimeout(() => {
+        wrap.style.transition = '';
+        wrap.style.transform = '';
+      }, 380);
+    });
+  });
+}
+
+function renderMyHand(){
+  const oldRects = snapshotMyHandRects();
+
+  myHandEl.innerHTML = '';
+  const myId = state.userId;
+  const handData = state.hands[myId];
+  if (!handData || !Array.isArray(handData.cards)) return;
+
+  const drawInfo = drawAnimMap.get(myId);
+  const drawSet = drawInfo?.values ? drawInfo.values : null;
+
+  handData.cards.forEach((v, idx) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'card-wrap';
+    wrap.dataset.cardValue = String(v);
+
+    if (drawSet && drawSet.has(Number(v))) wrap.classList.add('draw-in');
+
+    const card = buildFaceCardNode(v, 60, 90);
+    card.dataset.handIndex = String(idx);
+    card.dataset.cardValue = String(v);
+
+    card.addEventListener('pointerdown', (e) => {
+      if (!isMyTurn()) return;
+      if (isShotActive()) return;
+      if (isFrozen()) return;
+
+      const hd = state.hands[state.userId];
+      if (!hd || !Array.isArray(hd.cards)) return;
+
+      const currentIdx = Number(card.dataset.handIndex);
+      const currentVal = Number(card.dataset.cardValue);
+      if (Number.isNaN(currentIdx) || Number.isNaN(currentVal)) return;
+
+      dragging = { source:'hand', cardValue: currentVal, handIndex: currentIdx, pointerId: e.pointerId, originEl: card };
+      dragMoved = false;
+
+      card.setPointerCapture(e.pointerId);
+      card.classList.add('dragging');
+
+      dragGhost.innerHTML = '';
+      const ghost = buildFaceCardNode(currentVal, 60, 90);
+      ghost.style.boxShadow = '0 10px 24px rgba(0,0,0,.25)';
+      ghost.style.opacity = '0.95';
+      dragGhost.appendChild(ghost);
+
+      moveGhost(e.clientX, e.clientY);
+      setDropHintForAllSlots();
+      e.preventDefault();
+    });
+
+    card.addEventListener('pointermove', (e) => {
+      if (!dragging || dragging.pointerId !== e.pointerId) return;
+      dragMoved = true;
+      moveGhost(e.clientX, e.clientY);
+
+      setDropHintForAllSlots();
+      highlightDropSlots(e.clientX, e.clientY);
+      e.preventDefault();
+    });
+
+    card.addEventListener('pointerup', async (e) => {
+      if (!dragging || dragging.pointerId !== e.pointerId) return;
+
+      clearDropHighlights();
+      clearDropHints();
+
+      const dropSlotEl = getSlotElementUnderPoint(e.clientX, e.clientY);
+      const valToDrop = dragging.cardValue;
+      const idxToDrop = dragging.handIndex;
+
+      dragging.originEl.classList.remove('dragging');
+      dragging.originEl.releasePointerCapture(e.pointerId);
+      dragGhost.innerHTML = '';
+      dragging = null;
+
+      if (!dropSlotEl) return;
+
+      const toSlot = Number(dropSlotEl.dataset.slot);
+      if (![0,1,2,3].includes(toSlot)) return;
+
+      await discardMyCardToSlot(idxToDrop, valToDrop, toSlot);
+    });
+
+    card.addEventListener('pointercancel', (e) => {
+      if (!dragging || dragging.pointerId !== e.pointerId) return;
+      clearDropHighlights();
+      clearDropHints();
+      dragging.originEl.classList.remove('dragging');
+      dragGhost.innerHTML = '';
+      dragging = null;
+    });
+
+    wrap.appendChild(card);
+    myHandEl.appendChild(wrap);
+  });
+
+  requestAnimationFrame(() => { playFLIP(oldRects); });
+  updateTurnUI();
+}
+
+function renderHands(){
+  renderMyHand();
+  if (latestPlayers.length) renderPlayerCircle(latestPlayers);
+}
+
+function renderDiscards(){
+  const slots = state.discards?.slots || {0:[],1:[],2:[],3:[]};
+
+  const am = state.animatingMove;
+  const animSlot = (am && am.fromPlayerId !== state.userId) ? Number(am.toSlot) : null;
+  const animTs   = am?.ts || 0;
+
+  discardArea.querySelectorAll('.discard-slot').forEach(slotEl => {
+    const i = Number(slotEl.dataset.slot);
+
+    const realPile = Array.isArray(slots[i]) ? slots[i] : [];
+    const visualPile = (i === animSlot && animTs === am?.ts && realPile.length > 0)
+      ? realPile.slice(0, realPile.length - 1)
+      : realPile;
+
+    slotEl.innerHTML = '';
+
+    const visualCount = visualPile.length;
+    if (visualCount > 0){
+      const badge = document.createElement('div');
+      badge.className = 'discard-count';
+      badge.textContent = String(visualCount);
+      slotEl.appendChild(badge);
+    }
+  });
+
+  discardOverlay.innerHTML = '';
+  const overlayRect = discardOverlay.getBoundingClientRect();
+
+  discardArea.querySelectorAll('.discard-slot').forEach(slotEl => {
+    const i = Number(slotEl.dataset.slot);
+    const realPile = Array.isArray(slots[i]) ? slots[i] : [];
+
+    const am2 = state.animatingMove;
+    const animSlot2 = (am2 && am2.fromPlayerId !== state.userId) ? Number(am2.toSlot) : null;
+    const animTs2   = am2?.ts || 0;
+
+    const visualPile = (i === animSlot2 && animTs2 === am2?.ts && realPile.length > 0)
+      ? realPile.slice(0, realPile.length - 1)
+      : realPile;
+
+    if (visualPile.length <= 0) return;
+
+    const topEntry = getTopEntryFromPile(visualPile);
+    if (!topEntry) return;
+    const top = topEntry.v;
+
+    const r = slotEl.getBoundingClientRect();
+    const x = r.left - overlayRect.left;
+
+    const OFFSET_UPPER = -20;
+    const OFFSET_LOWER =  6;
+
+    let y = r.top - overlayRect.top;
+    if (i === 0 || i === 1) y += OFFSET_UPPER;
+    if (i === 2 || i === 3) y += OFFSET_LOWER;
+
+    const pileWrap = document.createElement('div');
+    pileWrap.className = 'pile';
+    pileWrap.style.left = `${x}px`;
+    pileWrap.style.top  = `${y}px`;
+
+    const layers = Math.min(3, visualPile.length - 1);
+    const stepX = 1;
+    const stepY = 1;
+    for (let k=0; k<layers; k++){
+      const layer = document.createElement('div');
+      layer.className = 'layer';
+      const dx = stepX * (layers - k);
+      const dy = stepY * (layers - k);
+      layer.style.transform = `translate(${dx}px, ${dy}px)`;
+      layer.style.opacity = '1';
+      pileWrap.appendChild(layer);
+    }
+
+    const card = document.createElement('div');
+    card.className = 'discard-card';
+    card.style.setProperty('--card-fill', getCardFillColor(top));
+    card.dataset.slot = String(i);
+    card.dataset.cardValue = String(top);
+
+    const inner = buildSmallFaceInner(top);
+    card.appendChild(inner);
+
+    const canReDrag = isMyTurn() && !isFrozen() && topEntry.by === state.userId && !isShotActive();
+    if (canReDrag){
+      card.title = 'ドラッグして置き直しOK';
+      card.addEventListener('pointerdown', (e) => {
+        if (!isMyTurn()) return;
+        if (isShotActive()) return;
+        if (isFrozen()) return;
+
+        const fromSlot = Number(card.dataset.slot);
+        const v = Number(card.dataset.cardValue);
+        if (![0,1,2,3].includes(fromSlot) || !Number.isFinite(v)) return;
+
+        const curSlots = state.discards?.slots || {};
+        const curPile = Array.isArray(curSlots[fromSlot]) ? curSlots[fromSlot] : [];
+        const curTop = getTopEntryFromPile(curPile);
+        if (!curTop || curTop.v !== v || curTop.by !== state.userId) return;
+
+        dragging = { source:'discard', cardValue: v, fromSlot, pointerId: e.pointerId, originEl: card };
+        dragMoved = false;
+
+        card.setPointerCapture(e.pointerId);
+        card.classList.add('dragging');
+
+        dragGhost.innerHTML = '';
+        const ghost = buildFaceCardNode(v, 60, 90);
+        ghost.style.boxShadow = '0 10px 24px rgba(0,0,0,.25)';
+        ghost.style.opacity = '0.95';
+        dragGhost.appendChild(ghost);
+
+        moveGhost(e.clientX, e.clientY);
+        setDropHintForAllSlots();
+        e.preventDefault();
+      });
+
+      card.addEventListener('pointermove', (e) => {
+        if (!dragging || dragging.pointerId !== e.pointerId) return;
+        if (dragging.source !== 'discard') return;
+
+        dragMoved = true;
+        moveGhost(e.clientX, e.clientY);
+
+        setDropHintForAllSlots();
+        highlightDropSlots(e.clientX, e.clientY);
+        e.preventDefault();
+      });
+
+      card.addEventListener('pointerup', async (e) => {
+        if (!dragging || dragging.pointerId !== e.pointerId) return;
+        if (dragging.source !== 'discard') return;
+
+        clearDropHighlights();
+        clearDropHints();
+
+        const dropSlotEl = getSlotElementUnderPoint(e.clientX, e.clientY);
+        const valToMove = dragging.cardValue;
+        const fromSlot  = dragging.fromSlot;
+
+        dragging.originEl.classList.remove('dragging');
+        dragging.originEl.releasePointerCapture(e.pointerId);
+        dragGhost.innerHTML = '';
+        dragging = null;
+
+        if (!dropSlotEl) return;
+
+        const toSlot = Number(dropSlotEl.dataset.slot);
+        if (![0,1,2,3].includes(toSlot)) return;
+        if (toSlot === fromSlot) return;
+
+        await moveMyDiscardTopToAnotherSlot(fromSlot, valToMove, toSlot);
+      });
+
+      card.addEventListener('pointercancel', (e) => {
+        if (!dragging || dragging.pointerId !== e.pointerId) return;
+        if (dragging.source !== 'discard') return;
+
+        clearDropHighlights();
+        clearDropHints();
+        dragging.originEl.classList.remove('dragging');
+        dragGhost.innerHTML = '';
+        dragging = null;
+      });
+    } else {
+      card.title = '';
+    }
+
+    pileWrap.appendChild(card);
+    discardOverlay.appendChild(pileWrap);
+  });
+
+  renderDeckCenter();
+  if (dragging) setDropHintForAllSlots();
+}
+
+function renderDeckCenter(){
+  const deckCount = Array.isArray(state.deckRemaining) ? state.deckRemaining.length : 0;
+
+  deckStack.innerHTML = '';
+  deckStack.classList.toggle('empty', deckCount <= 0);
+
+  const visibleLayers = Math.min(10, Math.max(1, deckCount > 0 ? 10 : 1));
+  const maxUnder = Math.max(0, visibleLayers - 1);
+
+  const stepX = 1;
+  const stepY = 1;
+
+  for (let k=0; k<=maxUnder; k++){
+    const layer = document.createElement('div');
+    layer.className = 'deck-layer';
+    layer.style.transform = `translate(${-stepX*k}px, ${-stepY*k}px)`;
+    deckStack.appendChild(layer);
+  }
+
+  const badge = document.createElement('div');
+  badge.className = 'deck-count';
+  badge.textContent = String(deckCount);
+  badge.style.display = deckCount > 0 ? 'flex' : 'none';
+  deckStack.appendChild(badge);
+
+  const started = !!state.game?.started;
+
+  const canDraw = !isFrozen()
+    && !isShotActive()
+    && isMyTurn()
+    && myTurnDiscardCount() >= (state.game?.requiredDiscards ?? 2)
+    && deckCount > 0;
+
+  deckStack.style.opacity = started ? (deckCount > 0 ? '1' : '0.55') : '0.55';
+  deckStack.style.pointerEvents = started ? 'auto' : 'none';
+
+  deckStack.title = !started
+    ? 'ゲーム開始後にクリック'
+    : isFrozen()
+      ? '手番停止中'
+      : isShotActive()
+        ? 'ショット選択中'
+        : canDraw
+          ? 'クリックで手番終了確認'
+          : (isMyTurn()
+              ? `捨て札を${(state.game?.requiredDiscards ?? 2)}枚以上（今${myTurnDiscardCount()}枚）`
+              : '自分の手番ではありません');
+}
+
+function moveGhost(x,y){
+  dragGhost.style.transform = `translate(${x - 30}px, ${y - 45}px)`;
+}
+
+function highlightDropSlots(x,y){
+  clearDropHighlights();
+  const slot = getSlotElementUnderPoint(x,y);
+  if (!slot || !dragging) return;
+
+  const toSlot = Number(slot.dataset.slot);
+  if (![0,1,2,3].includes(toSlot)) return;
+
+  if (dragging.source === 'discard' && Number.isFinite(Number(dragging.fromSlot)) && toSlot === Number(dragging.fromSlot)) return;
+
+  const slotsObj = makeHypotheticalSlotsForDrag();
+  const ok = canPlaceOnSlot(dragging.cardValue, toSlot, slotsObj);
+
+  slot.classList.add(ok ? 'drop-hover' : 'drop-bad');
+}
+function clearDropHighlights(){
+  discardArea.querySelectorAll('.discard-slot.drop-hover').forEach(el=>el.classList.remove('drop-hover'));
+  discardArea.querySelectorAll('.discard-slot.drop-bad').forEach(el=>el.classList.remove('drop-bad'));
+}
+
+function updateDiscardFrameAndClipSize(){
+  if (!discardArea || !discardFrame || !discardClip || !discardOverlay || !hintOverlay || !deckCenter) return;
+
+  requestAnimationFrame(() => {
+    const r = discardArea.getBoundingClientRect();
+    if (!r.width || !r.height) return;
+
+    const w = Math.max(10, r.width * 0.7);
+    const h = Math.max(10, r.height * 0.7);
+
+    discardFrame.style.width = `${w}px`;
+    discardFrame.style.height = `${h}px`;
+
+    discardClip.style.width = `${w}px`;
+    discardClip.style.height = `${h}px`;
+
+    discardOverlay.style.width = `${w}px`;
+    discardOverlay.style.height = `${h}px`;
+
+    hintOverlay.style.width = `${w}px`;
+    hintOverlay.style.height = `${h}px`;
+
+    deckCenter.style.width = `${w}px`;
+    deckCenter.style.height = `${h}px`;
+
+    renderDiscards();
+  });
+}
+window.addEventListener('resize', updateDiscardFrameAndClipSize);
+
+function sortAscNums(arr){ return [...arr].map(Number).sort((a,b)=>a-b); }
+function mergeExistingWithSortedDrawn(cardsExisting, drawnCards){
+  const drawnSorted = sortAscNums(drawnCards);
+  return [...cardsExisting, ...drawnSorted];
+}
+function scheduleFullHandSortAfter2s(){
+  if (!state.roomCode) return;
+
+  if (delayedFullSortTimer) clearTimeout(delayedFullSortTimer);
+  delayedFullSortToken++;
+  const token = delayedFullSortToken;
+
+  delayedFullSortTimer = setTimeout(async () => {
+    try {
+      if (token !== delayedFullSortToken) return;
+      if (!state.roomCode) return;
+
+      const handsSnap = await get(ref(db, `rooms/${state.roomCode}/hands/${state.userId}`));
+      const myHand = handsSnap.val() || { cards: [] };
+      const cards = Array.isArray(myHand.cards) ? myHand.cards : [];
+      const sorted = sortAscNums(cards);
+
+      await set(ref(db, `rooms/${state.roomCode}/hands/${state.userId}`), { cards: sorted });
+    } catch {
+    }
+  }, 2000);
+}
+
+function buildDeck(){ const deck=[]; for(let v=2; v<=99; v++) deck.push(v); return deck; }
+function shuffle(arr){
+  for (let i=arr.length-1; i>0; i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+function getHandSize(playerCount){ if (playerCount === 1) return 8; if (playerCount === 2) return 7; return 6; }
+
+function buildRandomCardColorMap(){
+  const values = [];
+  for(let v=2; v<=99; v++) values.push(v);
+  shuffle(values);
+
+  const pool = [...COLOR_POOL];
+  shuffle(pool);
+
+  const map = {};
+  values.forEach((v, idx) => { map[String(v)] = pool[idx % pool.length]; });
+  return map;
+}
+function buildRandomSpecialRolesMap(){
+  const values = [];
+  for(let v=2; v<=99; v++) values.push(v);
+  shuffle(values);
+
+  const spec = [
+    ["リバース", 4],
+    ["スキップ", 4],
+    ["ショット", 4],
+    ["ドロー2", 4],
+    ["サイレント", 4],
+    ["死の宣告", 7],
+  ];
+
+  const flat = [];
+  spec.forEach(([name, count]) => { for(let i=0;i<count;i++) flat.push(name); });
+  shuffle(flat);
+
+  const pick = values.slice(0, flat.length);
+  const map = {};
+  pick.forEach((v, idx) => { map[String(v)] = flat[idx]; });
+  return map;
+}
+
+function calcNextPlayerId(game){
+  const order = Array.isArray(game?.turnOrder) ? game.turnOrder : [];
+  if (!order.length) return null;
+
+  let dir = Number(game.dir || 1);
+  if (dir !== 1 && dir !== -1) dir = 1;
+
+  const curIdx = order.indexOf(game.currentPlayerId);
+  const nextIdx = (curIdx >= 0) ? (curIdx + dir + order.length * 1000) % order.length : 0;
+  return order[nextIdx] || null;
+}
+
+async function resolveDoomIfWatchTurnEnded(basePath, endedPid){
+  const [gameSnap, discSnap] = await Promise.all([
+    get(ref(db, `${basePath}/game`)),
+    get(ref(db, `${basePath}/discards`)),
+  ]);
+  const game = gameSnap.val();
+  if (!game?.started) return;
+
+  const doom = game.doom;
+  if (!doom?.active) return;
+  if (game.frozen) return;
+
+  if (doom.watchPid !== endedPid) return;
+
+  const disc = discSnap.val() || { slots:{0:[],1:[],2:[],3:[]}, lastMove:null };
+  const slots = disc.slots || {0:[],1:[],2:[],3:[]};
+  const slot = Number(doom.slot);
+  const pile = Array.isArray(slots[slot]) ? slots[slot] : [];
+  const top = getTopEntryFromPile(pile);
+
+  const stillOnTop = !!(top && Number(top.v) === Number(doom.card) && Number(top.ts || 0) === Number(doom.ts || -1));
+
+  if (stillOnTop){
+    await update(ref(db, `${basePath}/game`), {
+      frozen: true,
+      currentPlayerId: null,
+      shot: null,
+      doom: {
+        active: true,
+        by: doom.by,
+        card: Number(doom.card),
+        slot: Number(doom.slot),
+        ts: Number(doom.ts),
+        watchPid: doom.watchPid,
+        triggeredAt: Date.now()
+      },
+      updatedAt: Date.now()
+    });
+  } else {
+    await update(ref(db, `${basePath}/game`), {
+      doom: null,
+      updatedAt: Date.now()
+    });
+  }
+}
+
+async function endTurnWithEffect({ reverse=false, skipSteps=1, shot=false, draw2=false }){
+  if (!state.roomCode) return;
+
+  const base = `rooms/${state.roomCode}`;
+
+  const [gameSnap, deckSnap, myHandSnap] = await Promise.all([
+    get(ref(db, `${base}/game`)),
+    get(ref(db, `${base}/deckRemaining`)),
+    get(ref(db, `${base}/hands/${state.userId}`)),
+  ]);
+
+  const game = gameSnap.val();
+  if (!game || !game.started) return;
+  if (game.currentPlayerId !== state.userId) return;
+  if (game.frozen) return;
+
+  const order = Array.isArray(game.turnOrder) ? game.turnOrder : [];
+  const len = order.length || 0;
+  if (!len) return;
+
+  const playerCount = len || latestPlayers.length || 1;
+  const maxHand = getHandSize(playerCount);
+
+  let dir = Number(game.dir || 1);
+  if (dir !== 1 && dir !== -1) dir = 1;
+  const newDir = reverse ? (dir * -1) : dir;
+
+  const curIdx = order.indexOf(game.currentPlayerId);
+  const steps = Math.max(1, Number(skipSteps || 1));
+
+  let nextPid = null;
+  if (!shot){
+    const nextIdx = (curIdx >= 0)
+      ? (curIdx + newDir * steps + len * 1000) % len
+      : 0;
+    nextPid = order[nextIdx] || null;
+  }
+
+  const deck0 = deckSnap.val() || [];
+  const myHand = myHandSnap.val() || { cards: [] };
+  const existingCards = Array.isArray(myHand.cards) ? [...myHand.cards] : [];
+
+  const drawn = [];
+  let ptr = 0;
+  while (existingCards.length + drawn.length < maxHand && (deck0.length - ptr) > 0){
+    drawn.push(deck0[ptr]);
+    ptr++;
+  }
+
+  const myAfter = mergeExistingWithSortedDrawn(existingCards, drawn);
+  let deck1 = deck0.slice(ptr);
+
+  let nextHandAfter = null;
+  if (draw2 && nextPid){
+    const nextHandSnap = await get(ref(db, `${base}/hands/${nextPid}`));
+    const nh = nextHandSnap.val() || { cards: [] };
+    const nextExisting = Array.isArray(nh.cards) ? [...nh.cards] : [];
+
+    const d2 = [];
+    if (deck1.length > 0) { d2.push(deck1[0]); deck1 = deck1.slice(1); }
+    if (deck1.length > 0) { d2.push(deck1[0]); deck1 = deck1.slice(1); }
+
+    nextHandAfter = mergeExistingWithSortedDrawn(nextExisting, d2);
+  }
+
+  const tdc = game.turnDiscardCount || {};
+  tdc[state.userId] = 0;
+  if (nextPid) tdc[nextPid] = 0;
+
+  const updates = [];
+  updates.push(set(ref(db, `${base}/hands/${state.userId}`), { cards: myAfter }));
+  if (nextPid && nextHandAfter) updates.push(set(ref(db, `${base}/hands/${nextPid}`), { cards: nextHandAfter }));
+  updates.push(set(ref(db, `${base}/deckRemaining`), deck1));
+
+  const nextGame = {
+    dir: newDir,
+    turnNo: Number(game.turnNo || 0) + 1,
+    turnDiscardCount: tdc,
+    updatedAt: Date.now()
+  };
+
+  if (shot){
+    nextGame.currentPlayerId = null;
+    nextGame.shot = { active:true, by: state.userId, ts: Date.now() };
+  } else {
+    nextGame.currentPlayerId = nextPid;
+    nextGame.shot = null;
+  }
+
+  updates.push(update(ref(db, `${base}/game`), nextGame));
+  await Promise.all(updates);
+
+  await resolveDoomIfWatchTurnEnded(base, state.userId);
+
+  scheduleFullHandSortAfter2s();
+}
+
+async function chooseShotTarget(targetPid){
+  if (!state.roomCode) return;
+
+  const base = `rooms/${state.roomCode}`;
+  const gameSnap = await get(ref(db, `${base}/game`));
+  const game = gameSnap.val();
+  if (!game || !game.started) return;
+  if (game.frozen) return;
+
+  if (!game.shot?.active) return;
+  if (game.shot.by !== state.userId) return;
+
+  const order = Array.isArray(game.turnOrder) ? game.turnOrder : [];
+  if (!order.includes(targetPid)) return;
+
+  const tdc = game.turnDiscardCount || {};
+  tdc[targetPid] = 0;
+
+  await update(ref(db, `${base}/game`), {
+    currentPlayerId: targetPid,
+    shot: null,
+    turnDiscardCount: tdc,
+    updatedAt: Date.now()
+  });
+}
+
+async function discardMyCardToSlot(handIndex, cardValue, toSlot){
+  if (!state.roomCode) return;
+  if (!isMyTurn()) return;
+  if (isShotActive()) return;
+  if (isFrozen()) return;
+
+  const base = `rooms/${state.roomCode}`;
+
+  const myHandSnap = await get(ref(db, `${base}/hands/${state.userId}`));
+  const myHand = myHandSnap.val();
+  const cards = (myHand && Array.isArray(myHand.cards)) ? [...myHand.cards] : [];
+  if (handIndex < 0 || handIndex >= cards.length) return;
+  if (cards[handIndex] !== cardValue) {
+    const alt = cards.indexOf(cardValue);
+    if (alt === -1) return;
+    handIndex = alt;
+  }
+
+  const discSnap = await get(ref(db, `${base}/discards`));
+  const disc = discSnap.val() || { slots: {0:[],1:[],2:[],3:[]}, lastMove: null };
+  const slots = disc.slots || {0:[],1:[],2:[],3:[]};
+
+  if (!canPlaceOnSlot(cardValue, toSlot, slots)) return;
+
+  const ts = Date.now();
+
+  const pile = Array.isArray(slots[toSlot]) ? [...slots[toSlot]] : [];
+  pile.push({ v: Number(cardValue), by: state.userId, ts });
+  slots[toSlot] = pile;
+
+  disc.slots = slots;
+  disc.lastMove = { type:'discard', fromPlayerId: state.userId, card: Number(cardValue), toSlot, ts };
+
+  cards.splice(handIndex, 1);
+
+  const gameSnap = await get(ref(db, `${base}/game`));
+  const game = gameSnap.val();
+  if (!game || !game.started || game.currentPlayerId !== state.userId || game.frozen) {
+    await Promise.all([
+      set(ref(db, `${base}/hands/${state.userId}`), { cards }),
+      set(ref(db, `${base}/discards`), disc),
+    ]);
+    return;
+  }
+
+  const tdc = game.turnDiscardCount || {};
+  const nowCount = Number(tdc[state.userId] || 0) + 1;
+  tdc[state.userId] = nowCount;
+
+  await Promise.all([
+    set(ref(db, `${base}/hands/${state.userId}`), { cards }),
+    set(ref(db, `${base}/discards`), disc),
+    update(ref(db, `${base}/game`), { turnDiscardCount: tdc, updatedAt: Date.now() })
+  ]);
+
+  updateDiscardFrameAndClipSize();
+
+  const role = getCardRoleText(cardValue);
+  if (!role) return;
+
+  if (role === "リバース"){ await endTurnWithEffect({ reverse:true, skipSteps:1, shot:false, draw2:false }); return; }
+  if (role === "スキップ"){ await endTurnWithEffect({ reverse:false, skipSteps:2, shot:false, draw2:false }); return; }
+  if (role === "ショット"){ await endTurnWithEffect({ reverse:false, skipSteps:1, shot:true, draw2:false }); return; }
+  if (role === "ドロー2"){ await endTurnWithEffect({ reverse:false, skipSteps:1, shot:false, draw2:true }); return; }
+  if (role === "サイレント"){ await endTurnWithEffect({ reverse:false, skipSteps:1, shot:false, draw2:false }); return; }
+
+  if (role === "死の宣告"){
+    const g2 = (await get(ref(db, `${base}/game`))).val();
+    if (!g2 || !g2.started || g2.frozen) return;
+
+    const watchPid = calcNextPlayerId(g2);
+    if (!watchPid) return;
+
+    await update(ref(db, `${base}/game`), {
+      doom: { active: true, by: state.userId, card: Number(cardValue), slot: Number(toSlot), ts: Number(ts), watchPid },
+      updatedAt: Date.now()
+    });
+    return;
+  }
+}
+
+async function moveMyDiscardTopToAnotherSlot(fromSlot, cardValue, toSlot){
+  if (!state.roomCode) return;
+  if (!isMyTurn()) return;
+  if (isShotActive()) return;
+  if (isFrozen()) return;
+  if (![0,1,2,3].includes(fromSlot) || ![0,1,2,3].includes(toSlot)) return;
+  if (fromSlot === toSlot) return;
+
+  const base = `rooms/${state.roomCode}`;
+  const discSnap = await get(ref(db, `${base}/discards`));
+  const disc = discSnap.val() || { slots: {0:[],1:[],2:[],3:[]}, lastMove: null };
+  const slots = disc.slots || {0:[],1:[],2:[],3:[]};
+
+  const fromPile = Array.isArray(slots[fromSlot]) ? [...slots[fromSlot]] : [];
+  if (!fromPile.length) return;
+
+  const top = normalizeDiscardEntry(fromPile[fromPile.length - 1]);
+  if (!Number.isFinite(top.v)) return;
+  if (top.v !== Number(cardValue)) return;
+  if (top.by !== state.userId) return;
+
+  fromPile.pop();
+
+  const hypothetical = {
+    0: Array.isArray(slots[0]) ? [...slots[0]] : [],
+    1: Array.isArray(slots[1]) ? [...slots[1]] : [],
+    2: Array.isArray(slots[2]) ? [...slots[2]] : [],
+    3: Array.isArray(slots[3]) ? [...slots[3]] : [],
+  };
+  hypothetical[fromSlot] = [...fromPile];
+
+  if (!canPlaceOnSlot(top.v, toSlot, hypothetical)) return;
+
+  const toPile = Array.isArray(slots[toSlot]) ? [...slots[toSlot]] : [];
+  toPile.push({ v: top.v, by: top.by, ts: top.ts });
+
+  slots[fromSlot] = fromPile;
+  slots[toSlot] = toPile;
+
+  const ts = Date.now();
+  disc.slots = slots;
+  disc.lastMove = { type:'move', fromPlayerId: state.userId, card: top.v, fromSlot, toSlot, ts };
+
+  await set(ref(db, `${base}/discards`), disc);
+  updateDiscardFrameAndClipSize();
+}
+
+function maybeAnimateOtherPlayerDiscard(){
+  const m = state.discards?.lastMove;
+  if (!m || !m.ts) return;
+  if (m.ts <= state.lastSeenMoveTs) return;
+
+  state.lastSeenMoveTs = m.ts;
+
+  if (m.type === 'move') {
+    state.animatingMove = null;
+    return;
+  }
+
+  if (m.fromPlayerId && m.fromPlayerId !== state.userId){
+    state.animatingMove = { ts: m.ts, toSlot: m.toSlot, fromPlayerId: m.fromPlayerId, card: m.card };
+    animateDiscardMove(m.fromPlayerId, m.toSlot, m.card, m.ts);
+
+    setTimeout(() => {
+      if (state.animatingMove && state.animatingMove.ts === m.ts){
+        state.animatingMove = null;
+        renderDiscards();
+      }
+    }, 420);
+  }
+}
+
+function getDiscardDropTargetTopLeft(toSlot){
+  const slotEl = discardArea.querySelector(`.discard-slot[data-slot="${toSlot}"]`);
+  if (!slotEl) return null;
+  const r = slotEl.getBoundingClientRect();
+
+  const OFFSET_UPPER = -20;
+  const OFFSET_LOWER =  6;
+  let y = r.top;
+  if (toSlot === 0 || toSlot === 1) y += OFFSET_UPPER;
+  if (toSlot === 2 || toSlot === 3) y += OFFSET_LOWER;
+
+  return { x: r.left, y };
+}
+
+function animateDiscardMove(fromPlayerId, toSlot, cardValue, ts){
+  const fromTag = document.querySelector(`.player-tag[data-playerid="${fromPlayerId}"]`);
+  if (!fromTag) return;
+
+  const startRect = fromTag.getBoundingClientRect();
+  const startX = startRect.left + startRect.width/2 - 21;
+  const startY = startRect.top  + startRect.height/2 - 31;
+
+  const target = getDiscardDropTargetTopLeft(Number(toSlot));
+  if (!target) return;
+
+  const endX = target.x;
+  const endY = target.y;
+
+  const fly = document.createElement('div');
+  fly.className = 'fly-card';
+  fly.style.setProperty('--card-fill', getCardFillColor(cardValue));
+
+  const inner = document.createElement('div');
+  inner.className = 'inner';
+  inner.style.background = getCardFillColor(cardValue);
+
+  const num = document.createElement('div');
+  num.className = 'num';
+  num.textContent = String(cardValue);
+
+  const roleText = getCardRoleText(cardValue);
+  if (roleText){
+    const role = document.createElement('div');
+    role.className = 'role';
+    role.textContent = roleText;
+    inner.appendChild(role);
+  }
+
+  const art = document.createElement('img');
+  art.className = 'art';
+  art.src = getObaImageSrc(cardValue);
+  art.alt = '';
+
+  inner.appendChild(num);
+  inner.appendChild(art);
+  fly.appendChild(inner);
+
+  fly.style.left = `${startX}px`;
+  fly.style.top  = `${startY}px`;
+  fly.style.transform = 'translate(0px,0px) scale(1)';
+  document.body.appendChild(fly);
+
+  const dx = endX - startX;
+  const dy = endY - startY;
+
+  requestAnimationFrame(() => {
+    fly.style.transition = 'transform 380ms cubic-bezier(.22,.84,.44,1)';
+    fly.style.transform = `translate(${dx}px, ${dy}px) scale(1)`;
+  });
+
+  setTimeout(() => fly.remove(), 420);
+}
+
+function getDeckCenterPoint(){
+  const r = deckStack.getBoundingClientRect();
+  return { x: r.left + r.width/2, y: r.top + r.height/2 };
+}
+function getMyHandTargetPointByValue(cardValue){
+  const wrap = myHandEl.querySelector(`.card-wrap[data-card-value="${cardValue}"], .card-wrap[data-cardvalue="${cardValue}"]`);
+  const el = wrap || myHandEl.querySelector(`.card-wrap[data-cardValue="${cardValue}"]`);
+  if (!el) return null;
+  const r = el.getBoundingClientRect();
+  return { x: r.left + r.width/2, y: r.top + r.height/2 };
+}
+function getOtherPlayerTargetPoint(pid){
+  const tag = document.querySelector(`.player-tag[data-playerid="${pid}"]`);
+  if (!tag) return null;
+  const r = tag.getBoundingClientRect();
+  return { x: r.left + r.width/2, y: r.bottom + 18 };
+}
+function animateDeckToPlayer(pid, cardValue){
+  if (!deckStack || !document.body) return;
+
+  const start = getDeckCenterPoint();
+  let end = null;
+
+  if (pid === state.userId){
+    end = getMyHandTargetPointByValue(Number(cardValue));
+    if (!end){
+      const hr = myHandEl.getBoundingClientRect();
+      end = { x: hr.right - 10, y: hr.top + hr.height/2 };
+    }
+  } else {
+    end = getOtherPlayerTargetPoint(pid);
+    if (!end) return;
+  }
+
+  const fly = document.createElement('div');
+  fly.className = 'fly-card back';
+  fly.style.left = `${start.x - 21}px`;
+  fly.style.top  = `${start.y - 31}px`;
+  fly.style.transform = 'translate(0px,0px) scale(1)';
+  document.body.appendChild(fly);
+
+  const dx = (end.x - start.x);
+  const dy = (end.y - start.y);
+
+  requestAnimationFrame(() => {
+    fly.style.transition = 'transform 420ms cubic-bezier(.22,.84,.44,1)';
+    fly.style.transform = `translate(${dx}px, ${dy}px) scale(1)`;
+  });
+
+  setTimeout(() => fly.remove(), 460);
+}
+
+function positionDiscardAboveMe(){
+  const myTag = playerCircle.querySelector('.player-tag.me');
+  if (!myTag) return;
+  updateDiscardFrameAndClipSize();
+}
+
+const urlParams = new URLSearchParams(window.location.search);
+const roomFromUrl = urlParams.get('room');
+if(roomFromUrl) inputCode.value = roomFromUrl;
+
+btnJoin.addEventListener('click', async () => {
+  state.userName = inputName.value || '名無し';
+  state.roomCode = inputCode.value.trim() || generateRoomCode();
+
+  await set(ref(db, `rooms/${state.roomCode}/users/${state.userId}`), {
+    name: state.userName,
+    joinedAt: Date.now()
+  });
+
+  const roomRef = ref(db, `rooms/${state.roomCode}`);
+  const roomSnap = await get(roomRef);
+  const roomData = roomSnap.val();
+
+  if(!roomData || !roomData.hostId){
+    await update(roomRef, { hostId: state.userId });
+    state.isHost = true;
+  } else {
+    state.isHost = (roomData.hostId === state.userId);
+  }
+
+  updateHostUI();
+
+  mainEl.classList.remove('prejoin');
+  mainEl.classList.add('joined');
+
+  joinBox.classList.add('hidden');
+  lobby.classList.remove('hidden');
+  lobby.classList.add('entered');
+
+  await restoreSeatFromDB();
+
+  subscribeRoom();
+  subscribeHostState();
+  subscribePlayers();
+  subscribeHands();
+  subscribeDiscards();
+  subscribeDeckRemaining();
+  subscribeGame();
+  subscribeCardColors();
+  subscribeSpecialRoles();
+  subscribeInitialDealNoAnim();
+
+  await ensureDiscardsInitialized();
+  await ensureGameInitialized();
+
+  syncSeatUI();
+
+  updateDiscardFrameAndClipSize();
+});
+
+async function ensureDiscardsInitialized(){
+  if (!state.roomCode) return;
+  const discRef = ref(db, `rooms/${state.roomCode}/discards`);
+  const snap = await get(discRef);
+  if (snap.exists()) return;
+  await set(discRef, { slots: {0:[],1:[],2:[],3:[]}, lastMove: null });
+}
+async function ensureGameInitialized(){
+  if (!state.roomCode) return;
+  const gameRef = ref(db, `rooms/${state.roomCode}/game`);
+  const snap = await get(gameRef);
+  if (snap.exists()) return;
+  await set(gameRef, {
+    started: false,
+    turnOrder: [],
+    currentPlayerId: null,
+    turnNo: 0,
+    requiredDiscards: 2,
+    turnDiscardCount: {},
+    dir: 1,
+    shot: null,
+    frozen: false,
+    doom: null,
+    updatedAt: Date.now()
+  });
+}
+
+copyLinkBtn.addEventListener('click', async () => {
+  const url = `${location.origin}${location.pathname}?room=${state.roomCode}`;
+  try {
+    await navigator.clipboard.writeText(url);
+    copyLinkBtn.classList.add('copied');
+    copyLinkBtn.textContent = 'COPIED';
+    inputCode.value = state.roomCode;
+    setTimeout(()=>{
+      copyLinkBtn.classList.remove('copied');
+      copyLinkBtn.textContent='COPY';
+    },1500);
+  } catch {
+    prompt('コピーできません。手動でコピーしてください', url);
+  }
+});
+
+async function syncSeatUI(){
+  if (!state.roomCode) return;
+
+  const maxPlayers = state.room.maxPlayers || null;
+
+  if (!state.isHost && !maxPlayers){
+    seatPop.classList.add('hidden');
+    return;
+  }
+  if (state.seatedTable !== null){
+    seatPop.classList.add('hidden');
+    return;
+  }
+  await renderSeatTabs();
+  seatPop.classList.remove('hidden');
+}
+
+async function renderSeatTabs(){
+  if (!state.roomCode) return;
+  if (isRenderingSeatTabs) return;
+  isRenderingSeatTabs = true;
+
+  try {
+    seatTabs.innerHTML = '';
+
+    const roomRef = ref(db, `rooms/${state.roomCode}`);
+    const roomSnap = await get(roomRef);
+    const roomData = roomSnap.val() || {};
+    const maxPlayers = roomData.maxPlayers || null;
+
+    if(state.isHost && !maxPlayers){
+      seatLabel.textContent = '人数を選択';
+      for(let i=2; i<=8; i++){
+        const tab = document.createElement('div');
+        tab.className = 'tab';
+        tab.textContent = i;
+
+        tab.onclick = async () => {
+          await update(roomRef, { maxPlayers: i });
+          const tRef = ref(db, `rooms/${state.roomCode}/tables/1`);
+          await set(tRef, { playerId: state.userId, playerName: state.userName });
+
+          state.seatedTable = 1;
+          seatPop.classList.add('hidden');
+        };
+        seatTabs.appendChild(tab);
+      }
+      return;
+    }
+
+    seatLabel.textContent = '席を選択';
+
+    const effectiveMax = maxPlayers || 8;
+    const tablesSnap = await get(ref(db, `rooms/${state.roomCode}/tables`));
+    const tables = tablesSnap.val() || {};
+
+    for(let i=1; i<=effectiveMax; i++){
+      const tab = document.createElement('div');
+      tab.className = 'tab';
+      tab.textContent = i;
+
+      const t = tables[i];
+      if(t && t.playerId) tab.classList.add('disabled');
+
+      tab.onclick = async () => {
+        if(tab.classList.contains('disabled')) return;
+        const tRef = ref(db, `rooms/${state.roomCode}/tables/${i}`);
+        await set(tRef, { playerId: state.userId, playerName: state.userName || '名無し' });
+        state.seatedTable = i;
+        seatPop.classList.add('hidden');
+      };
+      seatTabs.appendChild(tab);
+    }
+  } finally {
+    isRenderingSeatTabs = false;
+  }
+}
+
+btnSeatCancel.onclick = () => {
+  seatPop.classList.add('hidden');
+  state.seatedTable = null;
+};
+
+function subscribePlayers(){
+  const tablesRef = ref(db, `rooms/${state.roomCode}/tables`);
+  onValue(tablesRef, async snap => {
+    const data = snap.val() || {};
+    const players = Object.entries(data)
+      .map(([seatIndex, t]) => (t && t.playerId ? {
+        id: t.playerId,
+        name: t.playerName || '名無し',
+        seatIndex: Number(seatIndex)
+      } : null))
+      .filter(Boolean)
+      .sort((a,b) => a.seatIndex - b.seatIndex);
+
+    latestPlayers = players;
+
+    const mySeat = players.find(p => p.id === state.userId);
+    if (mySeat && state.seatedTable === null) {
+      state.seatedTable = mySeat.seatIndex;
+      seatPop.classList.add('hidden');
+    }
+
+    const meStillSeated = players.some(p => p.id === state.userId);
+    if (!meStillSeated && state.seatedTable !== null) {
+      state.seatedTable = null;
+    }
+
+    await syncSeatUI();
+    renderPlayerCircle(players);
+
+    positionDiscardAboveMe();
+    updateDiscardFrameAndClipSize();
+  });
+}
+
+function renderPlayerCircle(players){
+  const clipNode = discardClip;
+  const frameNode = discardFrame;
+  const overlayNode = discardOverlay;
+  const hintNode = hintOverlay;
+  const deckNode = deckCenter;
+
+  playerCircle.innerHTML = '';
+  playerCircle.appendChild(clipNode);
+  playerCircle.appendChild(frameNode);
+  playerCircle.appendChild(overlayNode);
+  playerCircle.appendChild(hintNode);
+  playerCircle.appendChild(deckNode);
+
+  if (!players.length) return;
+
+  const n = players.length;
+  const radius = 55;
+  const step = (2 * Math.PI) / n;
+  const anchorAngle = Math.PI / 2;
+  const meIndex = players.findIndex(p => p.id === state.userId);
+
+  players.forEach((p, idx) => {
+    const k = (meIndex === -1) ? idx : (idx - meIndex + n) % n;
+    const angle = anchorAngle + step * k;
+
+    const x = 50 + radius * Math.cos(angle);
+    const y = 50 + radius * Math.sin(angle);
+
+    const tag = document.createElement('div');
+    tag.className = 'player-tag' + (p.id === state.userId ? ' me' : '');
+    tag.textContent = p.name;
+    tag.style.left = `${x}%`;
+    tag.style.top = `${y}%`;
+    tag.dataset.playerid = p.id;
+
+    if (!isFrozen() && state.game?.started && state.game.currentPlayerId === p.id) tag.classList.add('turn');
+
+    tag.onclick = async () => {
+      if (isFrozen()) return;
+
+      if (state.game?.shot?.active){
+        if (!amIShooter()) return;
+        if (p.id === state.userId) return;
+        await chooseShotTarget(p.id);
+        return;
+      }
+
+      if (p.id === state.userId) return;
+      if (!state.roomCode) return;
+      if (state.seatedTable !== null) return;
+
+      pendingSeatIndexToSteal = p.seatIndex;
+      pendingSeatPlayerIdToSteal = p.id;
+      kickMessage.textContent = `「${p.name}」を追い出して、この席に着席しますか？`;
+      kickDialog.classList.remove('hidden');
+    };
+
+    const handData = state.hands[p.id];
+    if (p.id !== state.userId && handData && Array.isArray(handData.cards) && handData.cards.length){
+      const miniHand = document.createElement('div');
+      miniHand.className = 'mini-hand';
+
+      const count = handData.cards.length;
+      const spread = 90;
+      const base = (count > 1) ? (-spread/2) : 0;
+
+      handData.cards.forEach((_, idx2) => {
+        const card = document.createElement('div');
+        card.className = 'mini-card';
+        card.textContent = '';
+
+        const angleDeg = (count > 1) ? base + (spread/(count-1))*idx2 : 0;
+        card.style.setProperty('--rot', `${angleDeg}deg`);
+        card.style.transform = `translate(-50%,0) rotate(${angleDeg}deg)`;
+        card.style.zIndex = String(10 + idx2);
+        miniHand.appendChild(card);
+      });
+
+      tag.appendChild(miniHand);
+    }
+
+    playerCircle.appendChild(tag);
+  });
+
+  updateTurnUI();
+}
+
+kickDialog.addEventListener('click', (e) => {
+  if (e.target === kickDialog) {
+    kickDialog.classList.add('hidden');
+    pendingSeatIndexToSteal = null;
+    pendingSeatPlayerIdToSteal = null;
+  }
+});
+btnKickNo.addEventListener('click', (e) => {
+  e.stopPropagation();
+  kickDialog.classList.add('hidden');
+  pendingSeatIndexToSteal = null;
+  pendingSeatPlayerIdToSteal = null;
+});
+btnKickYes.addEventListener('click', async (e) => {
+  e.stopPropagation();
+  if (pendingSeatIndexToSteal == null || !state.roomCode) {
+    kickDialog.classList.add('hidden');
+    return;
+  }
+
+  const seatIndex = pendingSeatIndexToSteal;
+  const roomRef = ref(db, `rooms/${state.roomCode}`);
+  const roomSnap = await get(roomRef);
+  const roomData = roomSnap.val() || {};
+
+  const tRef = ref(db, `rooms/${state.roomCode}/tables/${seatIndex}`);
+  await set(tRef, { playerId: state.userId, playerName: state.userName || '名無し' });
+
+  if (roomData.hostId && pendingSeatPlayerIdToSteal && roomData.hostId === pendingSeatPlayerIdToSteal) {
+    await update(roomRef, { hostId: state.userId });
+  }
+
+  state.seatedTable = seatIndex;
+
+  kickDialog.classList.add('hidden');
+  pendingSeatIndexToSteal = null;
+  pendingSeatPlayerIdToSteal = null;
+
+  seatPop.classList.add('hidden');
+});
+
+async function dealInitialHandsAndStartGame(){
+  if (!state.roomCode) return;
+
+  const tablesSnap = await get(ref(db, `rooms/${state.roomCode}/tables`));
+  const tables = tablesSnap.val() || {};
+  const players = Object.entries(tables)
+    .filter(([_,t]) => t && t.playerId)
+    .map(([seatIndex,t]) => ({ id: t.playerId, seatIndex: Number(seatIndex) }))
+    .sort((a,b)=>a.seatIndex-b.seatIndex)
+    .map(p=>p.id);
+
+  const playerCount = players.length;
+  if (!playerCount) return;
+
+  const handSize = getHandSize(playerCount);
+  const deck = shuffle(buildDeck());
+
+  const hands = {};
+  let ptr = 0;
+  for (const pid of players){
+    const cardsRaw = deck.slice(ptr, ptr + handSize);
+    ptr += handSize;
+
+    const cards = sortAscNums(cardsRaw);
+    hands[pid] = { cards };
+  }
+  const remaining = deck.slice(ptr);
+
+  const startPid = players[Math.floor(Math.random()*players.length)];
+
+  const tdc = {};
+  players.forEach(pid => tdc[pid] = 0);
+
+  const colorMap = buildRandomCardColorMap();
+  const rolesMap = buildRandomSpecialRolesMap();
+
+  const dealToken = Date.now();
+  suppressNextHandsAnim = true;
+  drawAnimMap.clear();
+
+  await Promise.all([
+    set(ref(db, `rooms/${state.roomCode}/suppressDealToken`), dealToken),
+    set(ref(db, `rooms/${state.roomCode}/cardColors`), colorMap),
+    set(ref(db, `rooms/${state.roomCode}/specialRoles`), rolesMap),
+    set(ref(db, `rooms/${state.roomCode}/hands`), hands),
+    set(ref(db, `rooms/${state.roomCode}/deckRemaining`), remaining),
+    set(ref(db, `rooms/${state.roomCode}/discards`), { slots: {0:[],1:[],2:[],3:[]}, lastMove: null }),
+    set(ref(db, `rooms/${state.roomCode}/game`), {
+      started: true,
+      turnOrder: players,
+      currentPlayerId: startPid,
+      turnNo: 1,
+      requiredDiscards: 2,
+      turnDiscardCount: tdc,
+      dir: 1,
+      shot: null,
+      frozen: false,
+      doom: null,
+      updatedAt: Date.now()
+    })
+  ]);
+
+  updateDiscardFrameAndClipSize();
+}
+
+function canEndTurnNow(){
+  const deckCount = Array.isArray(state.deckRemaining) ? state.deckRemaining.length : 0;
+  const required = Number(state.game?.requiredDiscards ?? 2);
+  return !!(state.roomCode
+    && state.game?.started
+    && !isFrozen()
+    && !isShotActive()
+    && isMyTurn()
+    && myTurnDiscardCount() >= required
+    && deckCount > 0
+  );
+}
+
+async function doEndTurnDrawAndPass(){
+  if (!state.roomCode) return;
+
+  const base = `rooms/${state.roomCode}`;
+  const [gameSnap, deckSnap, handsSnap] = await Promise.all([
+    get(ref(db, `${base}/game`)),
+    get(ref(db, `${base}/deckRemaining`)),
+    get(ref(db, `${base}/hands/${state.userId}`))
+  ]);
+  const game = gameSnap.val();
+  if (!game || !game.started || game.currentPlayerId !== state.userId) return;
+  if (game.shot?.active) return;
+  if (game.frozen) return;
+
+  const deck = deckSnap.val() || [];
+  const myHand = handsSnap.val() || { cards: [] };
+  const existingCards = Array.isArray(myHand.cards) ? [...myHand.cards] : [];
+
+  const required = Number(game.requiredDiscards ?? 2);
+  const discarded = Number((game.turnDiscardCount || {})[state.userId] || 0);
+  if (discarded < required) return;
+
+  const order = Array.isArray(game.turnOrder) ? game.turnOrder : [];
+  const playerCount = order.length || latestPlayers.length || 1;
+  const maxHand = getHandSize(playerCount);
+
+  const drawn = [];
+  let ptr = 0;
+  while (existingCards.length + drawn.length < maxHand && (deck.length - ptr) > 0){
+    drawn.push(deck[ptr]);
+    ptr++;
+  }
+
+  const cardsAfterDraw = mergeExistingWithSortedDrawn(existingCards, drawn);
+  const newDeck = deck.slice(ptr);
+
+  let dir = Number(game.dir || 1);
+  if (dir !== 1 && dir !== -1) dir = 1;
+
+  const curIdx = order.indexOf(game.currentPlayerId);
+  const nextIdx = (curIdx >= 0) ? (curIdx + dir + order.length * 1000) % order.length : 0;
+  const nextPid = order[nextIdx] || null;
+
+  const tdc = game.turnDiscardCount || {};
+  tdc[state.userId] = 0;
+  if (nextPid) tdc[nextPid] = 0;
+
+  await Promise.all([
+    set(ref(db, `${base}/hands/${state.userId}`), { cards: cardsAfterDraw }),
+    set(ref(db, `${base}/deckRemaining`), newDeck),
+    update(ref(db, `${base}/game`), {
+      currentPlayerId: nextPid,
+      turnNo: Number(game.turnNo || 0) + 1,
+      turnDiscardCount: tdc,
+      updatedAt: Date.now()
+    })
+  ]);
+
+  await resolveDoomIfWatchTurnEnded(base, state.userId);
+  scheduleFullHandSortAfter2s();
+}
+
+async function onDeckClick(){
+  if (!state.game?.started) return;
+  if (!isMyTurn()) return;
+  if (isShotActive()) return;
+  if (isFrozen()) return;
+
+  const required = Number(state.game?.requiredDiscards ?? 2);
+  const discarded = myTurnDiscardCount();
+  if (discarded < required) return;
+
+  if (!canEndTurnNow()) return;
+
+  openEndTurnPop();
+}
+
+deckStack.addEventListener('click', onDeckClick);
+
+btnEndTurnYes.addEventListener('click', async (e) => {
+  e.stopPropagation();
+  closeEndTurnPop();
+  await doEndTurnDrawAndPass();
+});
+
+hostSettingsBtn.addEventListener('click', () => { if (!state.isHost) return; startPop.classList.toggle('hidden'); });
+btnStartPopClose.addEventListener('click', () => { startPop.classList.add('hidden'); });
+
+btnGameStart.addEventListener('click', async () => {
+  if (!state.isHost) return;
+  await dealInitialHandsAndStartGame();
+  startPop.classList.add('hidden');
+});
+
+btnResetRoom.addEventListener('click', async () => {
+  if (!state.isHost || !state.roomCode) return;
+
+  const base = `rooms/${state.roomCode}`;
+  await Promise.all([
+    remove(ref(db, `${base}/maxPlayers`)),
+    remove(ref(db, `${base}/tables`)),
+    remove(ref(db, `${base}/hands`)),
+    remove(ref(db, `${base}/discards`)),
+    remove(ref(db, `${base}/deckRemaining`)),
+    remove(ref(db, `${base}/game`)),
+    remove(ref(db, `${base}/cardColors`)),
+    remove(ref(db, `${base}/specialRoles`)),
+    remove(ref(db, `${base}/suppressDealToken`)),
+  ]);
+
+  state.seatedTable = null;
+  startPop.classList.add('hidden');
+  closeEndTurnPop();
+
+  clearDropHints();
+
+  if (delayedFullSortTimer) clearTimeout(delayedFullSortTimer);
+  delayedFullSortTimer = null;
+  delayedFullSortToken++;
+
+  suppressNextHandsAnim = true;
+  drawAnimMap.clear();
+  prevHandsSnapshot = {};
+
+  doomBackdrop.classList.add('hidden');
+  doomCardWrap.innerHTML = '';
+  state.lastDoomTriggeredAt = 0;
+
+  await syncSeatUI();
+  updateDiscardFrameAndClipSize();
+});
+</script>
+
+</body>
+</html>
