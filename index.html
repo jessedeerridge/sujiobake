@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>テンプレ</title>
+<title>すうじのあくま</title>
 <style>
   html, body{height:100%; overflow:hidden;}
   body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#fff;color:#111;}
@@ -712,11 +712,6 @@
 
   /* =========================
      ★ 死の宣告：中央拡大＋ちょい振動（停止演出）
-     変更点:
-     1) 拡大カードを「手札カードと同じ比率/配置」にするため、buildFaceCardNodeをそのまま使う
-        → doom側は card-shell を 60x90基準のまま “scale” で拡大（=文字/画像の比率が完全一致）
-     2) スタートボタン等を押せるように、doom-backdrop は pointer-events:none（前に出るけどクリックは通す）
-        + doom-card-wrap も pointer-events:none（完全に操作を邪魔しない）
      ========================= */
   .doom-backdrop{
     position:fixed;
@@ -725,8 +720,8 @@
     display:flex;
     align-items:center;
     justify-content:center;
-    z-index:245;               /* ★ start-pop(240) より少し上だが… */
-    pointer-events:none;       /* ★ クリックを絶対に邪魔しない */
+    z-index:245;
+    pointer-events:none;
     padding:16px;
   }
   .doom-backdrop.hidden{display:none;}
@@ -756,13 +751,13 @@
     align-items:center;
     gap:10px;
     animation:doomZoomIn .28s cubic-bezier(.22,.84,.44,1) both;
-    pointer-events:none; /* ★ これもクリックを邪魔しない */
+    pointer-events:none;
   }
   .doom-card-wrap{
     transform-origin:center;
     animation:doomShake .55s ease-in-out infinite;
     filter:drop-shadow(0 20px 40px rgba(0,0,0,.45));
-    pointer-events:none; /* ★ クリックを邪魔しない */
+    pointer-events:none;
   }
   .doom-title{
     color:#fff;
@@ -780,12 +775,38 @@
     line-height:1.55;
     pointer-events:none;
   }
+
+  /* =========================
+     ★ 追加：死の宣告中に「上以外へ」置こうとした時のブロックポップ
+     ========================= */
+  .doom-block-pop{
+    position:fixed;
+    left:50%;
+    bottom:12px;
+    transform:translateX(-50%);
+    z-index:275;
+    background:rgba(20,20,20,.92);
+    color:#fff;
+    border:1px solid rgba(255,255,255,.18);
+    border-radius:14px;
+    box-shadow:0 18px 40px rgba(0,0,0,.35);
+    padding:10px 12px;
+    min-width:240px;
+    max-width:min(520px, calc(100% - 24px));
+    font-weight:900;
+    font-size:13px;
+    line-height:1.5;
+    letter-spacing:.02em;
+    pointer-events:none;
+    text-align:center;
+  }
+  .doom-block-pop.hidden{display:none;}
 </style>
 </head>
 <body>
 
 <header>
-  <h1>テンプレ</h1>
+  <h1>すうじのあくま</h1>
   <div style="display:flex;align-items:center;gap:6px;">
     <div class="small" id="roomInfo"></div>
     <button class="btn ghost" id="copyLinkBtn">COPY</button>
@@ -879,7 +900,8 @@
     ★ 表面色：スタート時にランダムで塗り分け（再スタートまで維持）<br>
     ★ 追加：スタート時にランダムで一部カードに縦書き効果名が付く<br>
     ★ 追加：<b>自分が捨てた（ドラッグした）一番上の捨て札</b>は、手番中に別スロットへ置き直せる<br>
-    ★ 追加：<b>死の宣告</b>：次のプレイヤーの手番終了時、上にカードが乗っていなければ中央拡大して全手番停止
+    ★ 追加：<b>死の宣告</b>：次のプレイヤーの手番終了時、上にカードが乗っていなければ中央拡大して全手番停止<br>
+    ★ 追加：死の宣告を見張られている手番は、<b>死の宣告の上</b>以外へアクションカードを出せない
   </div>
   <div class="start-pop-actions">
     <button id="btnResetRoom" class="btn ghost">リセット</button>
@@ -906,6 +928,9 @@
     <div class="doom-sub">このカードの上に置かれなかった。<br>全員の手番を停止。</div>
   </div>
 </div>
+
+<!-- ★ 追加：死の宣告ブロックポップ -->
+<div id="doomBlockPop" class="doom-block-pop hidden" aria-hidden="true"></div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
@@ -1021,12 +1046,45 @@ const btnEndTurnYes = document.getElementById('btnEndTurnYes');
 const doomBackdrop = document.getElementById('doomBackdrop');
 const doomCardWrap = document.getElementById('doomCardWrap');
 
+const doomBlockPop = document.getElementById('doomBlockPop');
+let doomBlockTimer = null;
+
 const ROLE_HELP = [
   { name: "カード1", text: "ああああ" },
   { name: "カード2", text: "いいいい" },
   { name: "カード3", text: "うううう" },
   { name: "カード4", text: "うううう" },
 ];
+
+function showDoomBlock(message){
+  if (!doomBlockPop) return;
+  if (doomBlockTimer) clearTimeout(doomBlockTimer);
+  doomBlockPop.textContent = message;
+  doomBlockPop.classList.remove('hidden');
+  doomBlockPop.setAttribute('aria-hidden', 'false');
+  doomBlockTimer = setTimeout(() => {
+    doomBlockPop.classList.add('hidden');
+    doomBlockPop.setAttribute('aria-hidden', 'true');
+  }, 1600);
+}
+
+function getActiveDoom(){
+  const g = state.game;
+  const d = g?.doom;
+  if (!g?.started) return null;
+  if (!d?.active) return null;
+  if (!Number.isFinite(Number(d.slot))) return null;
+  return d;
+}
+function isDoomWatchTurnForMe(){
+  const g = state.game;
+  const d = getActiveDoom();
+  if (!d) return false;
+  if (g?.frozen) return false;
+  if (!g?.started) return false;
+  if (g.currentPlayerId !== state.userId) return false; // 自分の手番中のみ
+  return d.watchPid === state.userId;
+}
 
 function renderHelpList(){
   helpBody.innerHTML = '';
@@ -1156,9 +1214,6 @@ function getCardRoleText(v){
 
 /* =========================
    ★ 死の宣告：中央拡大表示
-   変更点:
-   - 180x270 の別サイズで作らず、手札と同じ 60x90 を作って “scale” で拡大
-     → 数字/縦文字/画像の比率が完全一致する
    ========================= */
 function showDoomIfNeeded(){
   const doom = state.game?.doom || null;
@@ -1177,17 +1232,14 @@ function showDoomIfNeeded(){
 
   doomCardWrap.innerHTML = '';
 
-  // ★手札と同じ比率で作り、拡大は scale で行う
   const baseW = 60, baseH = 90;
   const big = buildFaceCardNode(Number(doom.card), baseW, baseH);
 
-  // 表示したい“見た目サイズ”に合わせてスケールを決定（比率は固定）
-  const targetW = 180;                 // 見た目の幅（好きに調整OK）
-  const scale = targetW / baseW;       // 60→180 なら 3.0
+  const targetW = 180;
+  const scale = targetW / baseW;
   big.style.transform = `scale(${scale})`;
   big.style.transformOrigin = 'center';
 
-  // 操作を邪魔しない（クリックは全部背面へ通る）
   big.style.cursor = 'default';
   big.style.pointerEvents = 'none';
   big.style.touchAction = 'none';
@@ -1604,6 +1656,14 @@ function renderMyHand(){
 
       const toSlot = Number(dropSlotEl.dataset.slot);
       if (![0,1,2,3].includes(toSlot)) return;
+
+      // ★ 追加：死の宣告（見張り中）は「死の宣告の上」以外へアクションカードを出せない
+      const doom = getActiveDoom();
+      const role = getCardRoleText(valToDrop);
+      if (doom && isDoomWatchTurnForMe() && role && role !== "死の宣告" && toSlot !== Number(doom.slot)){
+        showDoomBlock('これをプレイしたら手番が終わります。「死の宣告」');
+        return; // ★ ここでプレイ不可（DB変更しない）
+      }
 
       await discardMyCardToSlot(idxToDrop, valToDrop, toSlot);
     });
@@ -2187,7 +2247,20 @@ async function discardMyCardToSlot(handIndex, cardValue, toSlot){
   const disc = discSnap.val() || { slots: {0:[],1:[],2:[],3:[]}, lastMove: null };
   const slots = disc.slots || {0:[],1:[],2:[],3:[]};
 
-  if (!canPlaceOnSlot(cardValue, toSlot, slots)) return;
+  // ★ 追加：死の宣告を見張られている手番は、アクションカード（死の宣告以外）は「死の宣告の上」以外に出せない
+  const doom = getActiveDoom();
+  const role = getCardRoleText(cardValue);
+  if (doom && isDoomWatchTurnForMe() && role && role !== "死の宣告" && toSlot !== Number(doom.slot)){
+    showDoomBlock('これをプレイしたら手番が終わります。「死の宣告」');
+    return;
+  }
+
+  // ★ 追加：死の宣告の「上」に置く場合だけは、数値ルール（大小/±10）を無視して必ず置ける
+  const bypassRuleBecauseDoomCover = !!(doom && isDoomWatchTurnForMe() && toSlot === Number(doom.slot));
+
+  if (!bypassRuleBecauseDoomCover){
+    if (!canPlaceOnSlot(cardValue, toSlot, slots)) return;
+  }
 
   const ts = Date.now();
 
@@ -2222,16 +2295,16 @@ async function discardMyCardToSlot(handIndex, cardValue, toSlot){
 
   updateDiscardFrameAndClipSize();
 
-  const role = getCardRoleText(cardValue);
-  if (!role) return;
+  const role2 = getCardRoleText(cardValue);
+  if (!role2) return;
 
-  if (role === "リバース"){ await endTurnWithEffect({ reverse:true, skipSteps:1, shot:false, draw2:false }); return; }
-  if (role === "スキップ"){ await endTurnWithEffect({ reverse:false, skipSteps:2, shot:false, draw2:false }); return; }
-  if (role === "ショット"){ await endTurnWithEffect({ reverse:false, skipSteps:1, shot:true, draw2:false }); return; }
-  if (role === "ドロー2"){ await endTurnWithEffect({ reverse:false, skipSteps:1, shot:false, draw2:true }); return; }
-  if (role === "サイレント"){ await endTurnWithEffect({ reverse:false, skipSteps:1, shot:false, draw2:false }); return; }
+  if (role2 === "リバース"){ await endTurnWithEffect({ reverse:true, skipSteps:1, shot:false, draw2:false }); return; }
+  if (role2 === "スキップ"){ await endTurnWithEffect({ reverse:false, skipSteps:2, shot:false, draw2:false }); return; }
+  if (role2 === "ショット"){ await endTurnWithEffect({ reverse:false, skipSteps:1, shot:true, draw2:false }); return; }
+  if (role2 === "ドロー2"){ await endTurnWithEffect({ reverse:false, skipSteps:1, shot:false, draw2:true }); return; }
+  if (role2 === "サイレント"){ await endTurnWithEffect({ reverse:false, skipSteps:1, shot:false, draw2:false }); return; }
 
-  if (role === "死の宣告"){
+  if (role2 === "死の宣告"){
     const g2 = (await get(ref(db, `${base}/game`))).val();
     if (!g2 || !g2.started || g2.frozen) return;
 
@@ -2997,6 +3070,10 @@ btnResetRoom.addEventListener('click', async () => {
   doomBackdrop.classList.add('hidden');
   doomCardWrap.innerHTML = '';
   state.lastDoomTriggeredAt = 0;
+
+  if (doomBlockTimer) clearTimeout(doomBlockTimer);
+  doomBlockPop.classList.add('hidden');
+  doomBlockPop.textContent = '';
 
   await syncSeatUI();
   updateDiscardFrameAndClipSize();
