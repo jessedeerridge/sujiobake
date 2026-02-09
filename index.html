@@ -1,9 +1,9 @@
-<!DOCTYPE html>  
+<!DOCTYPE html>   
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>すうじのあくま</title>
+<title>テンプレ</title>
 <style>
   html, body{height:100%; overflow:hidden;}
   body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#fff;color:#111;}
@@ -93,9 +93,6 @@
     pointer-events:none;
   }
 
-  /* =========================
-     ★ 追加：手札の並び替え/ドロー演出用ラッパー
-     ========================= */
   .card-wrap{
     display:inline-block;
     position:relative;
@@ -155,9 +152,6 @@
     z-index:2;
   }
 
-  /* =========================
-     ★ 追加：カード効果（縦書き）
-     ========================= */
   .card-role{
     position:absolute;
     left:50%;
@@ -223,10 +217,6 @@
   }
   .player-tag.turn .mini-card{ animation:miniPulse .55s ease-in-out infinite alternate; }
 
-  /* =========================
-     ★ 追加：ショット中（全員の扇状手札が大小パルス）
-     ＋ 扇手札（mini-hand/mini-card）もクリックできる
-     ========================= */
   @keyframes shotPulse {
     0%   { transform:translate(-50%,0) scale(.92) rotate(var(--rot, 0deg)); }
     100% { transform:translate(-50%,0) scale(1.18) rotate(var(--rot, 0deg)); }
@@ -614,6 +604,45 @@
     font-weight:900;
   }
 
+  .doomblock-backdrop{
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,.35);
+    z-index:275;
+    display:flex;
+    align-items:flex-end;
+    justify-content:center;
+    padding:12px;
+  }
+  .doomblock-backdrop.hidden{display:none;}
+  .doomblock-pop{
+    background:#111;
+    color:#fff;
+    border:1px solid rgba(255,255,255,.18);
+    border-radius:14px;
+    box-shadow:0 18px 40px rgba(0,0,0,.35);
+    padding:12px 14px;
+    width:min(520px, calc(100% - 24px));
+    max-width:360px;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+  }
+  .doomblock-pop .msg{
+    font-weight:900;
+    font-size:14px;
+    letter-spacing:.02em;
+    line-height:1.5;
+    white-space:pre-wrap;
+  }
+  .doomblock-pop .actions{display:flex;justify-content:flex-end;gap:8px;}
+  .btn.doomblock-ok{
+    background:#fff;
+    color:#111;
+    border-color:#fff;
+    font-weight:900;
+  }
+
   .drag-ghost{
     position:fixed;
     left:0;top:0;
@@ -622,9 +651,6 @@
     pointer-events:none;
   }
 
-  /* =========================
-     ★ fly-card（移動演出）
-     ========================= */
   .fly-card{
     position:fixed;
     width:42px;height:62px;
@@ -710,9 +736,6 @@
     z-index:2;
   }
 
-  /* =========================
-     ★ 死の宣告：中央拡大＋ちょい振動（停止演出）
-     ========================= */
   .doom-backdrop{
     position:fixed;
     inset:0;
@@ -775,38 +798,12 @@
     line-height:1.55;
     pointer-events:none;
   }
-
-  /* =========================
-     ★ 追加：死の宣告中に「上以外へ」置こうとした時のブロックポップ
-     ========================= */
-  .doom-block-pop{
-    position:fixed;
-    left:50%;
-    bottom:12px;
-    transform:translateX(-50%);
-    z-index:275;
-    background:rgba(20,20,20,.92);
-    color:#fff;
-    border:1px solid rgba(255,255,255,.18);
-    border-radius:14px;
-    box-shadow:0 18px 40px rgba(0,0,0,.35);
-    padding:10px 12px;
-    min-width:240px;
-    max-width:min(520px, calc(100% - 24px));
-    font-weight:900;
-    font-size:13px;
-    line-height:1.5;
-    letter-spacing:.02em;
-    pointer-events:none;
-    text-align:center;
-  }
-  .doom-block-pop.hidden{display:none;}
 </style>
 </head>
 <body>
 
 <header>
-  <h1>すうじのあくま</h1>
+  <h1>テンプレ</h1>
   <div style="display:flex;align-items:center;gap:6px;">
     <div class="small" id="roomInfo"></div>
     <button class="btn ghost" id="copyLinkBtn">COPY</button>
@@ -900,8 +897,7 @@
     ★ 表面色：スタート時にランダムで塗り分け（再スタートまで維持）<br>
     ★ 追加：スタート時にランダムで一部カードに縦書き効果名が付く<br>
     ★ 追加：<b>自分が捨てた（ドラッグした）一番上の捨て札</b>は、手番中に別スロットへ置き直せる<br>
-    ★ 追加：<b>死の宣告</b>：次のプレイヤーの手番終了時、上にカードが乗っていなければ中央拡大して全手番停止<br>
-    ★ 追加：死の宣告を見張られている手番は、<b>死の宣告の上</b>以外へアクションカードを出せない
+    ★ 追加：<b>死の宣告</b>：次のプレイヤーの手番終了時、上にカードが乗っていなければ中央拡大して全手番停止
   </div>
   <div class="start-pop-actions">
     <button id="btnResetRoom" class="btn ghost">リセット</button>
@@ -918,9 +914,17 @@
   </div>
 </div>
 
+<div id="doomBlockBackdrop" class="doomblock-backdrop hidden" aria-hidden="true">
+  <div class="doomblock-pop" role="dialog" aria-modal="true" aria-label="死の宣告の注意">
+    <div id="doomBlockMsg" class="msg">これをプレイしたら手番が終わります。「死の宣告」</div>
+    <div class="actions">
+      <button id="btnDoomBlockOk" class="btn doomblock-ok">OK</button>
+    </div>
+  </div>
+</div>
+
 <div id="dragGhost" class="drag-ghost"></div>
 
-<!-- ★ 死の宣告：停止演出（中央拡大） -->
 <div id="doomBackdrop" class="doom-backdrop hidden" aria-hidden="true">
   <div class="doom-box" role="dialog" aria-modal="true" aria-label="死の宣告">
     <div class="doom-title">死の宣告</div>
@@ -928,9 +932,6 @@
     <div class="doom-sub">このカードの上に置かれなかった。<br>全員の手番を停止。</div>
   </div>
 </div>
-
-<!-- ★ 追加：死の宣告ブロックポップ -->
-<div id="doomBlockPop" class="doom-block-pop hidden" aria-hidden="true"></div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
@@ -1046,8 +1047,9 @@ const btnEndTurnYes = document.getElementById('btnEndTurnYes');
 const doomBackdrop = document.getElementById('doomBackdrop');
 const doomCardWrap = document.getElementById('doomCardWrap');
 
-const doomBlockPop = document.getElementById('doomBlockPop');
-let doomBlockTimer = null;
+const doomBlockBackdrop = document.getElementById('doomBlockBackdrop');
+const doomBlockMsg = document.getElementById('doomBlockMsg');
+const btnDoomBlockOk = document.getElementById('btnDoomBlockOk');
 
 const ROLE_HELP = [
   { name: "カード1", text: "ああああ" },
@@ -1055,36 +1057,6 @@ const ROLE_HELP = [
   { name: "カード3", text: "うううう" },
   { name: "カード4", text: "うううう" },
 ];
-
-function showDoomBlock(message){
-  if (!doomBlockPop) return;
-  if (doomBlockTimer) clearTimeout(doomBlockTimer);
-  doomBlockPop.textContent = message;
-  doomBlockPop.classList.remove('hidden');
-  doomBlockPop.setAttribute('aria-hidden', 'false');
-  doomBlockTimer = setTimeout(() => {
-    doomBlockPop.classList.add('hidden');
-    doomBlockPop.setAttribute('aria-hidden', 'true');
-  }, 1600);
-}
-
-function getActiveDoom(){
-  const g = state.game;
-  const d = g?.doom;
-  if (!g?.started) return null;
-  if (!d?.active) return null;
-  if (!Number.isFinite(Number(d.slot))) return null;
-  return d;
-}
-function isDoomWatchTurnForMe(){
-  const g = state.game;
-  const d = getActiveDoom();
-  if (!d) return false;
-  if (g?.frozen) return false;
-  if (!g?.started) return false;
-  if (g.currentPlayerId !== state.userId) return false; // 自分の手番中のみ
-  return d.watchPid === state.userId;
-}
 
 function renderHelpList(){
   helpBody.innerHTML = '';
@@ -1118,6 +1090,18 @@ function openEndTurnPop(){ endTurnBackdrop.classList.remove('hidden'); }
 function closeEndTurnPop(){ endTurnBackdrop.classList.add('hidden'); }
 endTurnBackdrop.addEventListener('click', (e) => { if (e.target === endTurnBackdrop) closeEndTurnPop(); });
 endTurnPop.addEventListener('click', (e) => e.stopPropagation());
+
+function openDoomBlockPop(msg){
+  doomBlockMsg.textContent = msg || 'これをプレイしたら手番が終わります。「死の宣告」';
+  doomBlockBackdrop.classList.remove('hidden');
+  doomBlockBackdrop.setAttribute('aria-hidden','false');
+}
+function closeDoomBlockPop(){
+  doomBlockBackdrop.classList.add('hidden');
+  doomBlockBackdrop.setAttribute('aria-hidden','true');
+}
+doomBlockBackdrop.addEventListener('click', (e) => { if (e.target === doomBlockBackdrop) closeDoomBlockPop(); });
+btnDoomBlockOk.addEventListener('click', (e) => { e.stopPropagation(); closeDoomBlockPop(); });
 
 let pendingSeatIndexToSteal = null;
 let pendingSeatPlayerIdToSteal = null;
@@ -1248,6 +1232,28 @@ function showDoomIfNeeded(){
 
   doomBackdrop.classList.remove('hidden');
   doomBackdrop.setAttribute('aria-hidden', 'false');
+}
+
+/* =========================
+   ★ 追加：自分が「死の宣告」対象かつ、まだ上に置かれていないか判定（①）
+   ========================= */
+function getActiveDoomTargetingMeIfStillOnTop(){
+  const game = state.game;
+  if (!game?.started) return null;
+  if (game.frozen) return null;
+
+  const doom = game.doom;
+  if (!doom?.active) return null;
+  if (doom.watchPid !== state.userId) return null;
+
+  const slots = state.discards?.slots || {0:[],1:[],2:[],3:[]};
+  const slot = Number(doom.slot);
+  if (![0,1,2,3].includes(slot)) return null;
+
+  const pile = Array.isArray(slots[slot]) ? slots[slot] : [];
+  const top = getTopEntryFromPile(pile);
+  const stillOnTop = !!(top && Number(top.v) === Number(doom.card) && Number(top.ts || 0) === Number(doom.ts || -1));
+  return stillOnTop ? { ...doom, slot } : null;
 }
 
 function subscribeRoom(){
@@ -1657,14 +1663,6 @@ function renderMyHand(){
       const toSlot = Number(dropSlotEl.dataset.slot);
       if (![0,1,2,3].includes(toSlot)) return;
 
-      // ★ 追加：死の宣告（見張り中）は「死の宣告の上」以外へアクションカードを出せない
-      const doom = getActiveDoom();
-      const role = getCardRoleText(valToDrop);
-      if (doom && isDoomWatchTurnForMe() && role && role !== "死の宣告" && toSlot !== Number(doom.slot)){
-        showDoomBlock('これをプレイしたら手番が終わります。「死の宣告」');
-        return; // ★ ここでプレイ不可（DB変更しない）
-      }
-
       await discardMyCardToSlot(idxToDrop, valToDrop, toSlot);
     });
 
@@ -2056,6 +2054,43 @@ function calcNextPlayerId(game){
   return order[nextIdx] || null;
 }
 
+/* =========================================================
+   ★ 修正の核：この手番終了で「死の宣告」が発動するかを
+     “その時点のgame/discards”で判定して、発動データを返す
+   ========================================================= */
+function computeDoomTriggerData(game, disc, endedPid){
+  if (!game?.started) return null;
+  if (game.frozen) return null;
+
+  const doom = game.doom;
+  if (!doom?.active) return null;
+  if (doom.watchPid !== endedPid) return null;
+
+  const slots = (disc?.slots) || {0:[],1:[],2:[],3:[]};
+  const slot = Number(doom.slot);
+  if (![0,1,2,3].includes(slot)) return null;
+
+  const pile = Array.isArray(slots[slot]) ? slots[slot] : [];
+  const top = getTopEntryFromPile(pile);
+
+  const stillOnTop = !!(top
+    && Number(top.v) === Number(doom.card)
+    && Number(top.ts || 0) === Number(doom.ts || -1)
+  );
+
+  if (!stillOnTop) return null;
+
+  return {
+    active: true,
+    by: doom.by,
+    card: Number(doom.card),
+    slot: Number(doom.slot),
+    ts: Number(doom.ts),
+    watchPid: doom.watchPid,
+    triggeredAt: Date.now()
+  };
+}
+
 async function resolveDoomIfWatchTurnEnded(basePath, endedPid){
   const [gameSnap, discSnap] = await Promise.all([
     get(ref(db, `${basePath}/game`)),
@@ -2064,41 +2099,24 @@ async function resolveDoomIfWatchTurnEnded(basePath, endedPid){
   const game = gameSnap.val();
   if (!game?.started) return;
 
-  const doom = game.doom;
-  if (!doom?.active) return;
-  if (game.frozen) return;
-
-  if (doom.watchPid !== endedPid) return;
-
   const disc = discSnap.val() || { slots:{0:[],1:[],2:[],3:[]}, lastMove:null };
-  const slots = disc.slots || {0:[],1:[],2:[],3:[]};
-  const slot = Number(doom.slot);
-  const pile = Array.isArray(slots[slot]) ? slots[slot] : [];
-  const top = getTopEntryFromPile(pile);
 
-  const stillOnTop = !!(top && Number(top.v) === Number(doom.card) && Number(top.ts || 0) === Number(doom.ts || -1));
+  const trigger = computeDoomTriggerData(game, disc, endedPid);
 
-  if (stillOnTop){
+  if (trigger){
     await update(ref(db, `${basePath}/game`), {
       frozen: true,
       currentPlayerId: null,
       shot: null,
-      doom: {
-        active: true,
-        by: doom.by,
-        card: Number(doom.card),
-        slot: Number(doom.slot),
-        ts: Number(doom.ts),
-        watchPid: doom.watchPid,
-        triggeredAt: Date.now()
-      },
+      doom: trigger,
       updatedAt: Date.now()
     });
   } else {
-    await update(ref(db, `${basePath}/game`), {
-      doom: null,
-      updatedAt: Date.now()
-    });
+    // 対象手番が終わって “上に置かれていた” 場合は解除
+    const doom = game.doom;
+    if (doom?.active && doom.watchPid === endedPid){
+      await update(ref(db, `${basePath}/game`), { doom: null, updatedAt: Date.now() });
+    }
   }
 }
 
@@ -2194,6 +2212,7 @@ async function endTurnWithEffect({ reverse=false, skipSteps=1, shot=false, draw2
   updates.push(update(ref(db, `${base}/game`), nextGame));
   await Promise.all(updates);
 
+  // ★ 従来どおり：手番終了時の死の宣告判定
   await resolveDoomIfWatchTurnEnded(base, state.userId);
 
   scheduleFullHandSortAfter2s();
@@ -2225,11 +2244,30 @@ async function chooseShotTarget(targetPid){
   });
 }
 
+function shouldBlockActionBecauseOfDoom(cardValue, toSlot){
+  const active = getActiveDoomTargetingMeIfStillOnTop();
+  if (!active) return false;
+
+  const role = getCardRoleText(cardValue);
+  const isAction = !!role;
+  if (!isAction) return false;
+
+  if (role === "死の宣告") return false;
+  if (Number(toSlot) === Number(active.slot)) return false;
+
+  return true;
+}
+
 async function discardMyCardToSlot(handIndex, cardValue, toSlot){
   if (!state.roomCode) return;
   if (!isMyTurn()) return;
   if (isShotActive()) return;
   if (isFrozen()) return;
+
+  if (shouldBlockActionBecauseOfDoom(cardValue, toSlot)){
+    openDoomBlockPop('これをプレイしたら手番が終わります。「死の宣告」');
+    return;
+  }
 
   const base = `rooms/${state.roomCode}`;
 
@@ -2247,20 +2285,7 @@ async function discardMyCardToSlot(handIndex, cardValue, toSlot){
   const disc = discSnap.val() || { slots: {0:[],1:[],2:[],3:[]}, lastMove: null };
   const slots = disc.slots || {0:[],1:[],2:[],3:[]};
 
-  // ★ 追加：死の宣告を見張られている手番は、アクションカード（死の宣告以外）は「死の宣告の上」以外に出せない
-  const doom = getActiveDoom();
-  const role = getCardRoleText(cardValue);
-  if (doom && isDoomWatchTurnForMe() && role && role !== "死の宣告" && toSlot !== Number(doom.slot)){
-    showDoomBlock('これをプレイしたら手番が終わります。「死の宣告」');
-    return;
-  }
-
-  // ★ 追加：死の宣告の「上」に置く場合だけは、数値ルール（大小/±10）を無視して必ず置ける
-  const bypassRuleBecauseDoomCover = !!(doom && isDoomWatchTurnForMe() && toSlot === Number(doom.slot));
-
-  if (!bypassRuleBecauseDoomCover){
-    if (!canPlaceOnSlot(cardValue, toSlot, slots)) return;
-  }
+  if (!canPlaceOnSlot(cardValue, toSlot, slots)) return;
 
   const ts = Date.now();
 
@@ -2295,26 +2320,59 @@ async function discardMyCardToSlot(handIndex, cardValue, toSlot){
 
   updateDiscardFrameAndClipSize();
 
-  const role2 = getCardRoleText(cardValue);
-  if (!role2) return;
+  const role = getCardRoleText(cardValue);
+  if (!role) return;
 
-  if (role2 === "リバース"){ await endTurnWithEffect({ reverse:true, skipSteps:1, shot:false, draw2:false }); return; }
-  if (role2 === "スキップ"){ await endTurnWithEffect({ reverse:false, skipSteps:2, shot:false, draw2:false }); return; }
-  if (role2 === "ショット"){ await endTurnWithEffect({ reverse:false, skipSteps:1, shot:true, draw2:false }); return; }
-  if (role2 === "ドロー2"){ await endTurnWithEffect({ reverse:false, skipSteps:1, shot:false, draw2:true }); return; }
-  if (role2 === "サイレント"){ await endTurnWithEffect({ reverse:false, skipSteps:1, shot:false, draw2:false }); return; }
+  if (role === "リバース"){ await endTurnWithEffect({ reverse:true, skipSteps:1, shot:false, draw2:false }); return; }
+  if (role === "スキップ"){ await endTurnWithEffect({ reverse:false, skipSteps:2, shot:false, draw2:false }); return; }
+  if (role === "ショット"){ await endTurnWithEffect({ reverse:false, skipSteps:1, shot:true, draw2:false }); return; }
+  if (role === "ドロー2"){ await endTurnWithEffect({ reverse:false, skipSteps:1, shot:false, draw2:true }); return; }
+  if (role === "サイレント"){ await endTurnWithEffect({ reverse:false, skipSteps:1, shot:false, draw2:false }); return; }
 
-  if (role2 === "死の宣告"){
-    const g2 = (await get(ref(db, `${base}/game`))).val();
-    if (!g2 || !g2.started || g2.frozen) return;
+  if (role === "死の宣告"){
+    /* ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+       ★ 修正点：
+       1) 「死の宣告」を置いた直後の discards と “上書き前のgame” から
+          「この手番終了で古い死の宣告が発動するか」を先に確保
+       2) その後に新しい死の宣告をセット
+       3) 手番終了（他アクションと同様に endTurnWithEffect）
+       4) もし古い死の宣告が発動条件を満たしていたら、最後にそれで凍結
+    ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★ */
 
-    const watchPid = calcNextPlayerId(g2);
+    const [gBeforeSnap, discAfterSnap] = await Promise.all([
+      get(ref(db, `${base}/game`)),
+      get(ref(db, `${base}/discards`)),
+    ]);
+    const gBefore = gBeforeSnap.val();
+    const discAfter = discAfterSnap.val() || { slots:{0:[],1:[],2:[],3:[]}, lastMove:null };
+
+    if (!gBefore || !gBefore.started || gBefore.frozen) return;
+
+    // ① ここで「古い死の宣告が自分の手番終了で発動する」スナップショットを確保
+    const oldTrigger = computeDoomTriggerData(gBefore, discAfter, state.userId);
+
+    // ② 新しい死の宣告をセット（watchPidは「次の人」）
+    const watchPid = calcNextPlayerId(gBefore);
     if (!watchPid) return;
 
     await update(ref(db, `${base}/game`), {
       doom: { active: true, by: state.userId, card: Number(cardValue), slot: Number(toSlot), ts: Number(ts), watchPid },
       updatedAt: Date.now()
     });
+
+    // ③ 手番終了（この中でも resolveDoomIfWatchTurnEnded は走るが、新doomで判定される）
+    await endTurnWithEffect({ reverse:false, skipSteps:1, shot:false, draw2:false });
+
+    // ④ それでも「古い死の宣告が発動する状態」だったなら、確保していた方で凍結させる
+    if (oldTrigger){
+      await update(ref(db, `${base}/game`), {
+        frozen: true,
+        currentPlayerId: null,
+        shot: null,
+        doom: oldTrigger,
+        updatedAt: Date.now()
+      });
+    }
     return;
   }
 }
@@ -2358,9 +2416,9 @@ async function moveMyDiscardTopToAnotherSlot(fromSlot, cardValue, toSlot){
   slots[fromSlot] = fromPile;
   slots[toSlot] = toPile;
 
-  const ts = Date.now();
+  const ts2 = Date.now();
   disc.slots = slots;
-  disc.lastMove = { type:'move', fromPlayerId: state.userId, card: top.v, fromSlot, toSlot, ts };
+  disc.lastMove = { type:'move', fromPlayerId: state.userId, card: top.v, fromSlot, toSlot, ts: ts2 };
 
   await set(ref(db, `${base}/discards`), disc);
   updateDiscardFrameAndClipSize();
@@ -3002,6 +3060,7 @@ async function doEndTurnDrawAndPass(){
   ]);
 
   await resolveDoomIfWatchTurnEnded(base, state.userId);
+
   scheduleFullHandSortAfter2s();
 }
 
@@ -3056,6 +3115,7 @@ btnResetRoom.addEventListener('click', async () => {
   state.seatedTable = null;
   startPop.classList.add('hidden');
   closeEndTurnPop();
+  closeDoomBlockPop();
 
   clearDropHints();
 
@@ -3070,10 +3130,6 @@ btnResetRoom.addEventListener('click', async () => {
   doomBackdrop.classList.add('hidden');
   doomCardWrap.innerHTML = '';
   state.lastDoomTriggeredAt = 0;
-
-  if (doomBlockTimer) clearTimeout(doomBlockTimer);
-  doomBlockPop.classList.add('hidden');
-  doomBlockPop.textContent = '';
 
   await syncSeatUI();
   updateDiscardFrameAndClipSize();
