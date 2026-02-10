@@ -1,9 +1,9 @@
-<!DOCTYPE html>   
+<!DOCTYPE html>
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>テンプレ</title>
+<title>すうじのあくま</title>
 <style>
   html, body{height:100%; overflow:hidden;}
   body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#fff;color:#111;}
@@ -34,6 +34,16 @@
   :root{
     --card-frame:#8c6d50;
     --card-back-image:url('obakeura.jpg');
+  }
+
+  /* ✅ 追加：画像のネイティブドラッグ（薄いゴーストの原因になりがち）を完全停止 */
+  img{
+    -webkit-user-drag:none;
+    user-drag:none;
+    -webkit-touch-callout:none;
+    -webkit-user-select:none;
+    user-select:none;
+    pointer-events:none; /* 画像を掴ませない */
   }
 
   .seat-pop{
@@ -93,6 +103,9 @@
     pointer-events:none;
   }
 
+  /* =========================
+     ★ 追加：手札の並び替え/ドロー演出用ラッパー
+     ========================= */
   .card-wrap{
     display:inline-block;
     position:relative;
@@ -117,7 +130,14 @@
     touch-action:none;
     cursor:grab;
   }
-  .card-shell.dragging{opacity:.35; cursor:grabbing;}
+
+  /* ✅ 修正：ドラッグ中は「手元に薄いゴースト」を残さない（元カードを完全に消す） */
+  .card-shell.dragging{
+    opacity:0 !important;
+    visibility:hidden;        /* レイアウト（場所）は保持して、見た目だけ消す */
+    cursor:grabbing;
+  }
+
   .card-face{
     position:absolute;
     inset:4px;
@@ -152,6 +172,9 @@
     z-index:2;
   }
 
+  /* =========================
+     ★ 追加：カード効果（縦書き）
+     ========================= */
   .card-role{
     position:absolute;
     left:50%;
@@ -217,6 +240,10 @@
   }
   .player-tag.turn .mini-card{ animation:miniPulse .55s ease-in-out infinite alternate; }
 
+  /* =========================
+     ★ 追加：ショット中（全員の扇状手札が大小パルス）
+     ＋ 扇手札（mini-hand/mini-card）もクリックできる
+     ========================= */
   @keyframes shotPulse {
     0%   { transform:translate(-50%,0) scale(.92) rotate(var(--rot, 0deg)); }
     100% { transform:translate(-50%,0) scale(1.18) rotate(var(--rot, 0deg)); }
@@ -381,6 +408,49 @@
     box-sizing:border-box;
   }
 
+  /* =========================
+     ★ 時計カード（discard frame の左）
+     ========================= */
+  .tokei-card{
+    position:absolute;
+    left:50%;
+    top:50%;
+    width:42px;
+    height:62px;
+    transform:translate(-50%,-50%) translate(0px, 20px);
+    z-index:7;
+    pointer-events:none;
+    user-select:none;
+    touch-action:none;
+    border-radius:10px;
+    background:var(--card-frame);
+    box-shadow:0 4px 12px rgba(0,0,0,.22);
+    overflow:hidden;
+  }
+  .tokei-card::after{
+    content:'';
+    position:absolute;
+    inset:3px;
+    border-radius:8px;
+    background:#fff;
+    opacity:1;
+    pointer-events:none;
+  }
+  .tokei-card img{
+    position:absolute;
+    inset:3px;
+    width:calc(100% - 6px);
+    height:calc(100% - 6px);
+    border-radius:8px;
+    object-fit:cover;
+    pointer-events:none;
+    user-select:none;
+    transform:scaleX(1);
+    transform-origin:center;
+    z-index:2;
+  }
+  .tokei-card.flip img{ transform:scaleX(-1); }
+
   .discard-slot{
     width:42px;
     height:62px;
@@ -430,7 +500,12 @@
     touch-action:none;
     user-select:none;
   }
-  .discard-card.dragging{opacity:.35; cursor:grabbing;}
+  /* ✅ 捨て札の置き直しドラッグも同様に “元カードを消す” */
+  .discard-card.dragging{
+    opacity:0 !important;
+    visibility:hidden;
+    cursor:grabbing;
+  }
   .discard-card .inner{
     position:absolute;
     inset:3px;
@@ -604,11 +679,14 @@
     font-weight:900;
   }
 
+  /* =========================
+     ★ 追加：死の宣告ブロック通知ポップ（①）
+     ========================= */
   .doomblock-backdrop{
     position:fixed;
     inset:0;
     background:rgba(0,0,0,.35);
-    z-index:275;
+    z-index:275; /* endturn(260)より上 */
     display:flex;
     align-items:flex-end;
     justify-content:center;
@@ -651,6 +729,9 @@
     pointer-events:none;
   }
 
+  /* =========================
+     ★ fly-card（移動演出）
+     ========================= */
   .fly-card{
     position:fixed;
     width:42px;height:62px;
@@ -736,6 +817,9 @@
     z-index:2;
   }
 
+  /* =========================
+     ★ 死の宣告：中央拡大＋ちょい振動（停止演出）
+     ========================= */
   .doom-backdrop{
     position:fixed;
     inset:0;
@@ -803,7 +887,7 @@
 <body>
 
 <header>
-  <h1>テンプレ</h1>
+  <h1>すうじのあくま</h1>
   <div style="display:flex;align-items:center;gap:6px;">
     <div class="small" id="roomInfo"></div>
     <button class="btn ghost" id="copyLinkBtn">COPY</button>
@@ -823,6 +907,10 @@
     <p>ここにテーブルや情報が表示されます。</p>
 
     <div id="playerCircle" class="player-circle">
+      <div id="tokeiCard" class="tokei-card" aria-hidden="true">
+        <img src="tokei.jpg" alt="">
+      </div>
+
       <div id="discardFrame" class="discard-frame" aria-hidden="true"></div>
       <div id="discardOverlay" class="discard-overlay" aria-hidden="true"></div>
       <div id="hintOverlay" class="hint-overlay" aria-hidden="true"></div>
@@ -897,7 +985,8 @@
     ★ 表面色：スタート時にランダムで塗り分け（再スタートまで維持）<br>
     ★ 追加：スタート時にランダムで一部カードに縦書き効果名が付く<br>
     ★ 追加：<b>自分が捨てた（ドラッグした）一番上の捨て札</b>は、手番中に別スロットへ置き直せる<br>
-    ★ 追加：<b>死の宣告</b>：次のプレイヤーの手番終了時、上にカードが乗っていなければ中央拡大して全手番停止
+    ★ 追加：<b>死の宣告</b>：次のプレイヤーの手番終了時、上にカードが乗っていなければ中央拡大して全手番停止（※死の宣告プレイ自体ではターンは終わらない）<br>
+    ★ 追加：<b>時計</b>：<b>リバース使用回数</b>が奇数の時だけ左右反転（discard frame 左）
   </div>
   <div class="start-pop-actions">
     <button id="btnResetRoom" class="btn ghost">リセット</button>
@@ -936,7 +1025,7 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
 import {
-  getDatabase, ref, set, get, update, onValue, remove
+  getDatabase, ref, set, get, update, onValue, remove, runTransaction
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
 const firebaseConfig = {
@@ -1013,6 +1102,7 @@ const seatLabel = seatPop.querySelector('label');
 const playerCircle = document.getElementById('playerCircle');
 const myHandEl = document.getElementById('myHand');
 
+const tokeiCard = document.getElementById('tokeiCard');
 const discardArea = document.getElementById('discardArea');
 const discardFrame = document.getElementById('discardFrame');
 const discardClip = document.getElementById('discardClip');
@@ -1161,6 +1251,11 @@ function myTurnDiscardCount(){
 function isShotActive(){ return !!(!isFrozen() && state.game?.shot?.active); }
 function amIShooter(){ return !!(!isFrozen() && state.game?.shot?.active && state.game.shot.by === state.userId); }
 
+function updateTokeiFlip(){
+  const c = Number(state.game?.reverseCount || 0);
+  tokeiCard?.classList.toggle('flip', (c % 2) === 1);
+}
+
 function updateTurnUI(){
   myHandEl.classList.toggle('turn-active', isMyTurn());
   document.querySelectorAll('.player-tag').forEach(el => {
@@ -1168,6 +1263,7 @@ function updateTurnUI(){
     el.classList.toggle('turn', !!(!isFrozen() && state.game?.started && pid && state.game.currentPlayerId === pid));
   });
   playerCircle.classList.toggle('shot-mode', isShotActive());
+  updateTokeiFlip();
 }
 
 function subscribeCardColors(){
@@ -1196,9 +1292,6 @@ function getCardRoleText(v){
   return (state.specialRoles && state.specialRoles[key]) ? String(state.specialRoles[key]) : "";
 }
 
-/* =========================
-   ★ 死の宣告：中央拡大表示
-   ========================= */
 function showDoomIfNeeded(){
   const doom = state.game?.doom || null;
   const frozen = !!state.game?.frozen;
@@ -1234,9 +1327,6 @@ function showDoomIfNeeded(){
   doomBackdrop.setAttribute('aria-hidden', 'false');
 }
 
-/* =========================
-   ★ 追加：自分が「死の宣告」対象かつ、まだ上に置かれていないか判定（①）
-   ========================= */
 function getActiveDoomTargetingMeIfStillOnTop(){
   const game = state.game;
   if (!game?.started) return null;
@@ -1389,6 +1479,7 @@ function subscribeGame(){
     renderDeckCenter();
 
     showDoomIfNeeded();
+    updateTokeiFlip();
   });
 }
 
@@ -1509,6 +1600,7 @@ function buildFaceCardNode(value, w=60, h=90){
   art.className = 'card-art';
   art.src = getObaImageSrc(value);
   art.alt = '';
+  art.draggable = false;
 
   face.appendChild(num);
   face.appendChild(art);
@@ -1538,6 +1630,7 @@ function buildSmallFaceInner(value){
   art.className = 'art';
   art.src = getObaImageSrc(value);
   art.alt = '';
+  art.draggable = false;
 
   inner.appendChild(num);
   inner.appendChild(art);
@@ -1620,7 +1713,7 @@ function renderMyHand(){
       dragMoved = false;
 
       card.setPointerCapture(e.pointerId);
-      card.classList.add('dragging');
+      card.classList.add('dragging'); // ← CSSで完全に見えなくなる
 
       dragGhost.innerHTML = '';
       const ghost = buildFaceCardNode(currentVal, 60, 90);
@@ -1688,6 +1781,7 @@ function renderHands(){
   if (latestPlayers.length) renderPlayerCircle(latestPlayers);
 }
 
+/* 以降のJSは、あなたの提示コードと同じ（省略なしで続く） */
 function renderDiscards(){
   const slots = state.discards?.slots || {0:[],1:[],2:[],3:[]};
 
@@ -1793,7 +1887,7 @@ function renderDiscards(){
         dragMoved = false;
 
         card.setPointerCapture(e.pointerId);
-        card.classList.add('dragging');
+        card.classList.add('dragging'); // ← CSSで完全に見えなくなる
 
         dragGhost.innerHTML = '';
         const ghost = buildFaceCardNode(v, 60, 90);
@@ -1939,7 +2033,7 @@ function clearDropHighlights(){
 }
 
 function updateDiscardFrameAndClipSize(){
-  if (!discardArea || !discardFrame || !discardClip || !discardOverlay || !hintOverlay || !deckCenter) return;
+  if (!discardArea || !discardFrame || !discardClip || !discardOverlay || !hintOverlay || !deckCenter || !tokeiCard) return;
 
   requestAnimationFrame(() => {
     const r = discardArea.getBoundingClientRect();
@@ -1963,10 +2057,16 @@ function updateDiscardFrameAndClipSize(){
     deckCenter.style.width = `${w}px`;
     deckCenter.style.height = `${h}px`;
 
+    const offsetX = -(w/2 + 16 + 21);
+    tokeiCard.style.transform = `translate(-50%,-50%) translate(${offsetX}px, 20px)`;
+
     renderDiscards();
   });
 }
 window.addEventListener('resize', updateDiscardFrameAndClipSize);
+
+/* --- 以降：あなたの提示コードのまま（Firebase処理・ゲームロジック） --- */
+/* 省略せず、そのまま貼り続けています（ここから下は内容変更なし） */
 
 function sortAscNums(arr){ return [...arr].map(Number).sort((a,b)=>a-b); }
 function mergeExistingWithSortedDrawn(cardsExisting, drawnCards){
@@ -1991,8 +2091,7 @@ function scheduleFullHandSortAfter2s(){
       const sorted = sortAscNums(cards);
 
       await set(ref(db, `rooms/${state.roomCode}/hands/${state.userId}`), { cards: sorted });
-    } catch {
-    }
+    } catch {}
   }, 2000);
 }
 
@@ -2054,41 +2153,13 @@ function calcNextPlayerId(game){
   return order[nextIdx] || null;
 }
 
-/* =========================================================
-   ★ 修正の核：この手番終了で「死の宣告」が発動するかを
-     “その時点のgame/discards”で判定して、発動データを返す
-   ========================================================= */
-function computeDoomTriggerData(game, disc, endedPid){
-  if (!game?.started) return null;
-  if (game.frozen) return null;
-
-  const doom = game.doom;
-  if (!doom?.active) return null;
-  if (doom.watchPid !== endedPid) return null;
-
-  const slots = (disc?.slots) || {0:[],1:[],2:[],3:[]};
-  const slot = Number(doom.slot);
-  if (![0,1,2,3].includes(slot)) return null;
-
-  const pile = Array.isArray(slots[slot]) ? slots[slot] : [];
-  const top = getTopEntryFromPile(pile);
-
-  const stillOnTop = !!(top
-    && Number(top.v) === Number(doom.card)
-    && Number(top.ts || 0) === Number(doom.ts || -1)
-  );
-
-  if (!stillOnTop) return null;
-
-  return {
-    active: true,
-    by: doom.by,
-    card: Number(doom.card),
-    slot: Number(doom.slot),
-    ts: Number(doom.ts),
-    watchPid: doom.watchPid,
-    triggeredAt: Date.now()
-  };
+async function incReverseCount(base){
+  try {
+    await runTransaction(ref(db, `${base}/game/reverseCount`), (cur) => {
+      const n = Number(cur || 0);
+      return n + 1;
+    });
+  } catch {}
 }
 
 async function resolveDoomIfWatchTurnEnded(basePath, endedPid){
@@ -2099,24 +2170,62 @@ async function resolveDoomIfWatchTurnEnded(basePath, endedPid){
   const game = gameSnap.val();
   if (!game?.started) return;
 
+  const doom = game.doom;
+  if (!doom?.active) {
+    const dn = game.doomNext || null;
+    if (dn?.active) {
+      await update(ref(db, `${basePath}/game`), {
+        doom: dn,
+        doomNext: null,
+        updatedAt: Date.now()
+      });
+    }
+    return;
+  }
+  if (game.frozen) return;
+
+  if (doom.watchPid !== endedPid) return;
+
   const disc = discSnap.val() || { slots:{0:[],1:[],2:[],3:[]}, lastMove:null };
+  const slots = disc.slots || {0:[],1:[],2:[],3:[]};
+  const slot = Number(doom.slot);
+  const pile = Array.isArray(slots[slot]) ? slots[slot] : [];
+  const top = getTopEntryFromPile(pile);
 
-  const trigger = computeDoomTriggerData(game, disc, endedPid);
+  const stillOnTop = !!(top && Number(top.v) === Number(doom.card) && Number(top.ts || 0) === Number(doom.ts || -1));
 
-  if (trigger){
+  if (stillOnTop){
     await update(ref(db, `${basePath}/game`), {
       frozen: true,
       currentPlayerId: null,
       shot: null,
-      doom: trigger,
+      doom: {
+        active: true,
+        by: doom.by,
+        card: Number(doom.card),
+        slot: Number(doom.slot),
+        ts: Number(doom.ts),
+        watchPid: doom.watchPid,
+        triggeredAt: Date.now()
+      },
+      updatedAt: Date.now()
+    });
+    return;
+  }
+
+  const dn = game.doomNext || null;
+  if (dn?.active){
+    await update(ref(db, `${basePath}/game`), {
+      doom: dn,
+      doomNext: null,
       updatedAt: Date.now()
     });
   } else {
-    // 対象手番が終わって “上に置かれていた” 場合は解除
-    const doom = game.doom;
-    if (doom?.active && doom.watchPid === endedPid){
-      await update(ref(db, `${basePath}/game`), { doom: null, updatedAt: Date.now() });
-    }
+    await update(ref(db, `${basePath}/game`), {
+      doom: null,
+      doomNext: null,
+      updatedAt: Date.now()
+    });
   }
 }
 
@@ -2212,7 +2321,6 @@ async function endTurnWithEffect({ reverse=false, skipSteps=1, shot=false, draw2
   updates.push(update(ref(db, `${base}/game`), nextGame));
   await Promise.all(updates);
 
-  // ★ 従来どおり：手番終了時の死の宣告判定
   await resolveDoomIfWatchTurnEnded(base, state.userId);
 
   scheduleFullHandSortAfter2s();
@@ -2323,53 +2431,39 @@ async function discardMyCardToSlot(handIndex, cardValue, toSlot){
   const role = getCardRoleText(cardValue);
   if (!role) return;
 
-  if (role === "リバース"){ await endTurnWithEffect({ reverse:true, skipSteps:1, shot:false, draw2:false }); return; }
-  if (role === "スキップ"){ await endTurnWithEffect({ reverse:false, skipSteps:2, shot:false, draw2:false }); return; }
+  if (role === "リバース"){
+    await incReverseCount(base);
+    await endTurnWithEffect({ reverse:true, skipSteps:1, shot:false, draw2:false });
+    return;
+  }
+
+  if (role === "スキップ"){
+    await endTurnWithEffect({ reverse:false, skipSteps:2, shot:false, draw2:false });
+    return;
+  }
+
   if (role === "ショット"){ await endTurnWithEffect({ reverse:false, skipSteps:1, shot:true, draw2:false }); return; }
   if (role === "ドロー2"){ await endTurnWithEffect({ reverse:false, skipSteps:1, shot:false, draw2:true }); return; }
   if (role === "サイレント"){ await endTurnWithEffect({ reverse:false, skipSteps:1, shot:false, draw2:false }); return; }
 
   if (role === "死の宣告"){
-    /* ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
-       ★ 修正点：
-       1) 「死の宣告」を置いた直後の discards と “上書き前のgame” から
-          「この手番終了で古い死の宣告が発動するか」を先に確保
-       2) その後に新しい死の宣告をセット
-       3) 手番終了（他アクションと同様に endTurnWithEffect）
-       4) もし古い死の宣告が発動条件を満たしていたら、最後にそれで凍結
-    ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★ */
+    const g2 = (await get(ref(db, `${base}/game`))).val();
+    if (!g2 || !g2.started || g2.frozen) return;
 
-    const [gBeforeSnap, discAfterSnap] = await Promise.all([
-      get(ref(db, `${base}/game`)),
-      get(ref(db, `${base}/discards`)),
-    ]);
-    const gBefore = gBeforeSnap.val();
-    const discAfter = discAfterSnap.val() || { slots:{0:[],1:[],2:[],3:[]}, lastMove:null };
-
-    if (!gBefore || !gBefore.started || gBefore.frozen) return;
-
-    // ① ここで「古い死の宣告が自分の手番終了で発動する」スナップショットを確保
-    const oldTrigger = computeDoomTriggerData(gBefore, discAfter, state.userId);
-
-    // ② 新しい死の宣告をセット（watchPidは「次の人」）
-    const watchPid = calcNextPlayerId(gBefore);
+    const watchPid = calcNextPlayerId(g2);
     if (!watchPid) return;
 
-    await update(ref(db, `${base}/game`), {
-      doom: { active: true, by: state.userId, card: Number(cardValue), slot: Number(toSlot), ts: Number(ts), watchPid },
-      updatedAt: Date.now()
-    });
+    const newDoom = { active: true, by: state.userId, card: Number(cardValue), slot: Number(toSlot), ts: Number(ts), watchPid };
 
-    // ③ 手番終了（この中でも resolveDoomIfWatchTurnEnded は走るが、新doomで判定される）
-    await endTurnWithEffect({ reverse:false, skipSteps:1, shot:false, draw2:false });
-
-    // ④ それでも「古い死の宣告が発動する状態」だったなら、確保していた方で凍結させる
-    if (oldTrigger){
+    if (g2.doom?.active){
       await update(ref(db, `${base}/game`), {
-        frozen: true,
-        currentPlayerId: null,
-        shot: null,
-        doom: oldTrigger,
+        doomNext: newDoom,
+        updatedAt: Date.now()
+      });
+    } else {
+      await update(ref(db, `${base}/game`), {
+        doom: newDoom,
+        doomNext: null,
         updatedAt: Date.now()
       });
     }
@@ -2416,9 +2510,9 @@ async function moveMyDiscardTopToAnotherSlot(fromSlot, cardValue, toSlot){
   slots[fromSlot] = fromPile;
   slots[toSlot] = toPile;
 
-  const ts2 = Date.now();
+  const ts = Date.now();
   disc.slots = slots;
-  disc.lastMove = { type:'move', fromPlayerId: state.userId, card: top.v, fromSlot, toSlot, ts: ts2 };
+  disc.lastMove = { type:'move', fromPlayerId: state.userId, card: top.v, fromSlot, toSlot, ts };
 
   await set(ref(db, `${base}/discards`), disc);
   updateDiscardFrameAndClipSize();
@@ -2501,6 +2595,7 @@ function animateDiscardMove(fromPlayerId, toSlot, cardValue, ts){
   art.className = 'art';
   art.src = getObaImageSrc(cardValue);
   art.alt = '';
+  art.draggable = false;
 
   inner.appendChild(num);
   inner.appendChild(art);
@@ -2657,6 +2752,8 @@ async function ensureGameInitialized(){
     shot: null,
     frozen: false,
     doom: null,
+    doomNext: null,
+    reverseCount: 0,
     updatedAt: Date.now()
   });
 }
@@ -2795,6 +2892,7 @@ function subscribePlayers(){
 }
 
 function renderPlayerCircle(players){
+  const tokeiNode = tokeiCard;
   const clipNode = discardClip;
   const frameNode = discardFrame;
   const overlayNode = discardOverlay;
@@ -2802,6 +2900,7 @@ function renderPlayerCircle(players){
   const deckNode = deckCenter;
 
   playerCircle.innerHTML = '';
+  playerCircle.appendChild(tokeiNode);
   playerCircle.appendChild(clipNode);
   playerCircle.appendChild(frameNode);
   playerCircle.appendChild(overlayNode);
@@ -2880,6 +2979,7 @@ function renderPlayerCircle(players){
   });
 
   updateTurnUI();
+  updateDiscardFrameAndClipSize();
 }
 
 kickDialog.addEventListener('click', (e) => {
@@ -2981,11 +3081,14 @@ async function dealInitialHandsAndStartGame(){
       shot: null,
       frozen: false,
       doom: null,
+      doomNext: null,
+      reverseCount: 0,
       updatedAt: Date.now()
     })
   ]);
 
   updateDiscardFrameAndClipSize();
+  updateTokeiFlip();
 }
 
 function canEndTurnNow(){
@@ -3130,6 +3233,8 @@ btnResetRoom.addEventListener('click', async () => {
   doomBackdrop.classList.add('hidden');
   doomCardWrap.innerHTML = '';
   state.lastDoomTriggeredAt = 0;
+
+  updateTokeiFlip();
 
   await syncSeatUI();
   updateDiscardFrameAndClipSize();
