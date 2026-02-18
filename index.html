@@ -324,14 +324,9 @@
   .help-pop-title{font-weight:800;font-size:14px;}
   .help-pop-body{padding:12px;overflow:auto;max-height:calc(70vh - 48px);}
   .help-meta{font-size:12px;color:#555;margin-bottom:8px;}
-  .help-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px;}
-  .help-card{
-    border:1px solid #ddd;border-radius:10px;padding:8px 4px;background:#fff;
-    text-align:center;box-shadow:0 3px 8px rgba(0,0,0,.08);
-    min-height:62px;
-  }
-  .help-card .v{font-size:14px;font-weight:900;line-height:1.1;}
-  .help-card .r{font-size:10px;font-weight:700;color:#111;line-height:1.2;margin-top:6px;min-height:12px;}
+  .help-grid{display:grid;grid-template-columns:repeat(7,minmax(64px,1fr));gap:8px;justify-items:center;}
+  .help-card{display:flex;justify-content:center;align-items:center;min-height:96px;}
+  .help-card .card-shell{cursor:default;touch-action:auto;}
 
   .discard-clip{
     position:absolute;
@@ -1168,18 +1163,11 @@ function renderHelpList(){
   for(let v=CARD_MIN; v<=CARD_MAX; v++){
     const cell = document.createElement('div');
     cell.className = 'help-card';
-    cell.style.background = config.cardColors[String(v)] || '#fff';
 
-    const value = document.createElement('div');
-    value.className = 'v';
-    value.textContent = String(v);
+    const cardNode = buildFaceCardNode(v, 60, 90);
+    cardNode.setAttribute('aria-label', `カード${v} ${config.specialRoles[String(v)] || '効果なし'}`);
 
-    const role = document.createElement('div');
-    role.className = 'r';
-    role.textContent = config.specialRoles[String(v)] || '—';
-
-    cell.appendChild(value);
-    cell.appendChild(role);
+    cell.appendChild(cardNode);
     grid.appendChild(cell);
   }
 
