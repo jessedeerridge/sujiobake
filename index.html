@@ -323,17 +323,10 @@
   }
   .help-pop-title{font-weight:800;font-size:14px;}
   .help-pop-body{padding:12px;overflow:auto;max-height:calc(70vh - 48px);}
-  .role-row{display:flex;gap:12px;align-items:flex-start;padding:10px 0;}
-  .role-card{
-    width:72px;height:108px;border-radius:10px;border:1px solid #ddd;background:#f8f8f8;
-    box-shadow:0 6px 16px rgba(0,0,0,.10);
-    flex:0 0 auto;
-    display:flex;align-items:center;justify-content:center;
-    font-size:12px;font-weight:700;color:#444;
-  }
-  .role-desc{flex:1 1 auto;}
-  .role-desc .name{font-weight:900;margin-bottom:4px;}
-  .role-desc .text{font-size:13px;line-height:1.55;color:#222;white-space:pre-wrap;}
+  .help-meta{font-size:12px;color:#555;margin-bottom:8px;}
+  .help-grid{display:grid;grid-template-columns:repeat(7,minmax(64px,1fr));gap:8px;justify-items:center;}
+  .help-card{display:flex;justify-content:center;align-items:center;min-height:96px;}
+  .help-card .card-shell{cursor:default;touch-action:auto;}
 
   .discard-clip{
     position:absolute;
@@ -961,7 +954,7 @@
 <div id="helpBackdrop" class="help-pop-backdrop hidden">
   <div class="help-pop" role="dialog" aria-modal="true" aria-label="正体カード一覧">
     <div class="help-pop-header">
-      <div class="help-pop-title">正体カード</div>
+      <div class="help-pop-title">カード配分（1〜99）</div>
       <button id="btnHelpClose" class="btn ghost" style="padding:2px 6px;font-size:12px;">×</button>
     </div>
     <div class="help-pop-body" id="helpBody"></div>
@@ -975,7 +968,7 @@
   </div>
   <div class="start-pop-main">
     「スタート」で全プレイヤーにカードを配布。<br>
-    デッキ：2〜99（各1枚）。<br>
+    デッキ：1〜99（各1枚）。<br>
     配布：1人=8枚 / 2人=7枚 / 3人以上=6枚。<br>
     ★ ルール：手番では <b>2枚以上捨て札</b> しないと山札を引けません。<br>
     ★ 山札クリック：確認→「はい」で最大枚数までドロー → 次のプレイヤーへ。<br>
@@ -1141,34 +1134,44 @@ const doomBlockBackdrop = document.getElementById('doomBlockBackdrop');
 const doomBlockMsg = document.getElementById('doomBlockMsg');
 const btnDoomBlockOk = document.getElementById('btnDoomBlockOk');
 
-const ROLE_HELP = [
-  { name: "カード1", text: "ああああ" },
-  { name: "カード2", text: "いいいい" },
-  { name: "カード3", text: "うううう" },
-  { name: "カード4", text: "うううう" },
-];
+function getDisplayCardConfig(){
+  if (state.cardColors && state.specialRoles) return { cardColors: state.cardColors, specialRoles: state.specialRoles };
+  const pending = state.room?.pendingCardSetup;
+  if (pending?.cardColors && pending?.specialRoles) return pending;
+  return null;
+}
 
 function renderHelpList(){
   helpBody.innerHTML = '';
-  ROLE_HELP.forEach((r, idx) => {
-    const row = document.createElement('div');
-    row.className = 'role-row';
 
-    const card = document.createElement('div');
-    card.className = 'role-card';
-    card.textContent = `CARD ${idx+1}`;
+  const config = getDisplayCardConfig();
+  if (!config){
+    helpBody.innerHTML = '<div class="help-meta">カード配分は入室時にランダム生成され、スタート後に表示されます。</div>';
+    return;
+  }
 
-    const desc = document.createElement('div');
-    desc.className = 'role-desc';
-    desc.innerHTML = `
-      <div class="name">${r.name}</div>
-      <div class="text">${r.text}</div>
-    `;
+  const meta = document.createElement('div');
+  meta.className = 'help-meta';
+  meta.textContent = state.game?.started
+    ? 'この回で使っているカード配分です。'
+    : '次のスタートで使う予定のカード配分です。';
+  helpBody.appendChild(meta);
 
-    row.appendChild(card);
-    row.appendChild(desc);
-    helpBody.appendChild(row);
-  });
+  const grid = document.createElement('div');
+  grid.className = 'help-grid';
+
+  for(let v=CARD_MIN; v<=CARD_MAX; v++){
+    const cell = document.createElement('div');
+    cell.className = 'help-card';
+
+    const cardNode = buildFaceCardNode(v, 60, 90);
+    cardNode.setAttribute('aria-label', `カード${v} ${config.specialRoles[String(v)] || '効果なし'}`);
+
+    cell.appendChild(cardNode);
+    grid.appendChild(cell);
+  }
+
+  helpBody.appendChild(grid);
 }
 function openHelp(){ renderHelpList(); helpBackdrop.classList.remove('hidden'); }
 function closeHelp(){ helpBackdrop.classList.add('hidden'); }
@@ -2068,6 +2071,14 @@ window.addEventListener('resize', updateDiscardFrameAndClipSize);
 /* --- 以降：あなたの提示コードのまま（Firebase処理・ゲームロジック） --- */
 /* 省略せず、そのまま貼り続けています（ここから下は内容変更なし） */
 
+const CARD_MIN = 1;
+const CARD_MAX = 99;
+function getAllCardValues(){
+  const values = [];
+  for(let v=CARD_MIN; v<=CARD_MAX; v++) values.push(v);
+  return values;
+}
+
 function sortAscNums(arr){ return [...arr].map(Number).sort((a,b)=>a-b); }
 function mergeExistingWithSortedDrawn(cardsExisting, drawnCards){
   const drawnSorted = sortAscNums(drawnCards);
@@ -2095,7 +2106,7 @@ function scheduleFullHandSortAfter2s(){
   }, 2000);
 }
 
-function buildDeck(){ const deck=[]; for(let v=2; v<=99; v++) deck.push(v); return deck; }
+function buildDeck(){ return getAllCardValues(); }
 function shuffle(arr){
   for (let i=arr.length-1; i>0; i--){
     const j = Math.floor(Math.random()*(i+1));
@@ -2106,8 +2117,7 @@ function shuffle(arr){
 function getHandSize(playerCount){ if (playerCount === 1) return 8; if (playerCount === 2) return 7; return 6; }
 
 function buildRandomCardColorMap(){
-  const values = [];
-  for(let v=2; v<=99; v++) values.push(v);
+  const values = getAllCardValues();
   shuffle(values);
 
   const pool = [...COLOR_POOL];
@@ -2118,8 +2128,7 @@ function buildRandomCardColorMap(){
   return map;
 }
 function buildRandomSpecialRolesMap(){
-  const values = [];
-  for(let v=2; v<=99; v++) values.push(v);
+  const values = getAllCardValues();
   shuffle(values);
 
   const spec = [
@@ -2679,6 +2688,32 @@ const urlParams = new URLSearchParams(window.location.search);
 const roomFromUrl = urlParams.get('room');
 if(roomFromUrl) inputCode.value = roomFromUrl;
 
+
+async function ensurePendingCardSetupInitialized(){
+  if (!state.roomCode) return;
+
+  const pendingRef = ref(db, `rooms/${state.roomCode}/pendingCardSetup`);
+  try {
+    await runTransaction(pendingRef, (current) => {
+      if (current?.cardColors && current?.specialRoles) return;
+      return {
+        createdAt: Date.now(),
+        cardColors: buildRandomCardColorMap(),
+        specialRoles: buildRandomSpecialRolesMap(),
+      };
+    });
+  } catch {
+    const snap = await get(pendingRef);
+    if (!snap.exists()){
+      await set(pendingRef, {
+        createdAt: Date.now(),
+        cardColors: buildRandomCardColorMap(),
+        specialRoles: buildRandomSpecialRolesMap(),
+      });
+    }
+  }
+}
+
 btnJoin.addEventListener('click', async () => {
   state.userName = inputName.value || '名無し';
   state.roomCode = inputCode.value.trim() || generateRoomCode();
@@ -2698,6 +2733,8 @@ btnJoin.addEventListener('click', async () => {
   } else {
     state.isHost = (roomData.hostId === state.userId);
   }
+
+  await ensurePendingCardSetupInitialized();
 
   updateHostUI();
 
@@ -3056,8 +3093,10 @@ async function dealInitialHandsAndStartGame(){
   const tdc = {};
   players.forEach(pid => tdc[pid] = 0);
 
-  const colorMap = buildRandomCardColorMap();
-  const rolesMap = buildRandomSpecialRolesMap();
+  const pendingSnap = await get(ref(db, `rooms/${state.roomCode}/pendingCardSetup`));
+  const pending = pendingSnap.val() || {};
+  const colorMap = pending.cardColors || buildRandomCardColorMap();
+  const rolesMap = pending.specialRoles || buildRandomSpecialRolesMap();
 
   const dealToken = Date.now();
   suppressNextHandsAnim = true;
@@ -3086,6 +3125,12 @@ async function dealInitialHandsAndStartGame(){
       updatedAt: Date.now()
     })
   ]);
+
+  await set(ref(db, `rooms/${state.roomCode}/pendingCardSetup`), {
+    createdAt: Date.now(),
+    cardColors: buildRandomCardColorMap(),
+    specialRoles: buildRandomSpecialRolesMap(),
+  });
 
   updateDiscardFrameAndClipSize();
   updateTokeiFlip();
@@ -3213,6 +3258,7 @@ btnResetRoom.addEventListener('click', async () => {
     remove(ref(db, `${base}/cardColors`)),
     remove(ref(db, `${base}/specialRoles`)),
     remove(ref(db, `${base}/suppressDealToken`)),
+    remove(ref(db, `${base}/pendingCardSetup`)),
   ]);
 
   state.seatedTable = null;
