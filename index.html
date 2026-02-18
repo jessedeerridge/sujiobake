@@ -334,6 +334,16 @@
   .role-desc{flex:1 1 auto;}
   .role-desc .name{font-weight:900;margin-bottom:4px;}
   .role-desc .text{font-size:13px;line-height:1.55;color:#222;white-space:pre-wrap;}
+  .round-hand-wrap{padding:10px 0;border-bottom:1px solid #eee;margin-bottom:4px;}
+  .round-hand-title{font-size:13px;font-weight:700;margin-bottom:8px;}
+  .round-hand-row{display:flex;gap:6px;flex-wrap:nowrap;overflow-x:auto;padding-bottom:2px;}
+  .round-hand-card{
+    min-width:44px;height:58px;border-radius:8px;
+    border:1px solid #d9d9d9;background:#f6f6f6;
+    display:flex;align-items:center;justify-content:center;
+    font-weight:800;font-size:16px;color:#111;
+    flex:0 0 auto;
+  }
 
   .discard-clip{
     position:absolute;
@@ -1080,6 +1090,7 @@ const state = {
   animatingMove: null,
   lastMyHandRects: null,
   lastDoomTriggeredAt: 0,
+  roundHelpCards: [],
 };
 
 const mainEl = document.getElementById('main');
@@ -1150,6 +1161,29 @@ const ROLE_HELP = [
 
 function renderHelpList(){
   helpBody.innerHTML = '';
+
+  const roundWrap = document.createElement('div');
+  roundWrap.className = 'round-hand-wrap';
+
+  const roundTitle = document.createElement('div');
+  roundTitle.className = 'round-hand-title';
+  roundTitle.textContent = '今回の手札カード（7枚）';
+
+  const roundRow = document.createElement('div');
+  roundRow.className = 'round-hand-row';
+
+  const cards = Array.isArray(state.roundHelpCards) ? state.roundHelpCards.slice(0, 7) : [];
+  for(let i=0; i<7; i++){
+    const card = document.createElement('div');
+    card.className = 'round-hand-card';
+    card.textContent = cards[i] != null ? String(cards[i]) : '–';
+    roundRow.appendChild(card);
+  }
+
+  roundWrap.appendChild(roundTitle);
+  roundWrap.appendChild(roundRow);
+  helpBody.appendChild(roundWrap);
+
   ROLE_HELP.forEach((r, idx) => {
     const row = document.createElement('div');
     row.className = 'role-row';
@@ -1168,6 +1202,26 @@ function renderHelpList(){
     row.appendChild(card);
     row.appendChild(desc);
     helpBody.appendChild(row);
+  });
+}
+
+function generateRandomRoundHelpCards(count = 7){
+  return shuffle(buildDeck()).slice(0, count).sort((a,b)=>a-b);
+}
+
+async function ensureRoundHelpCardsInitialized(){
+  if (!state.roomCode) return;
+  const cardsRef = ref(db, `rooms/${state.roomCode}/roundHelpCards`);
+  const snap = await get(cardsRef);
+  if (snap.exists()) return;
+  await set(cardsRef, generateRandomRoundHelpCards());
+}
+
+function subscribeRoundHelpCards(){
+  const cardsRef = ref(db, `rooms/${state.roomCode}/roundHelpCards`);
+  onValue(cardsRef, snap => {
+    state.roundHelpCards = snap.val() || [];
+    if (!helpBackdrop.classList.contains('hidden')) renderHelpList();
   });
 }
 function openHelp(){ renderHelpList(); helpBackdrop.classList.remove('hidden'); }
@@ -2720,9 +2774,11 @@ btnJoin.addEventListener('click', async () => {
   subscribeCardColors();
   subscribeSpecialRoles();
   subscribeInitialDealNoAnim();
+  subscribeRoundHelpCards();
 
   await ensureDiscardsInitialized();
   await ensureGameInitialized();
+  await ensureRoundHelpCardsInitialized();
 
   syncSeatUI();
 
@@ -3067,6 +3123,7 @@ async function dealInitialHandsAndStartGame(){
     set(ref(db, `rooms/${state.roomCode}/suppressDealToken`), dealToken),
     set(ref(db, `rooms/${state.roomCode}/cardColors`), colorMap),
     set(ref(db, `rooms/${state.roomCode}/specialRoles`), rolesMap),
+    set(ref(db, `rooms/${state.roomCode}/roundHelpCards`), generateRandomRoundHelpCards()),
     set(ref(db, `rooms/${state.roomCode}/hands`), hands),
     set(ref(db, `rooms/${state.roomCode}/deckRemaining`), remaining),
     set(ref(db, `rooms/${state.roomCode}/discards`), { slots: {0:[],1:[],2:[],3:[]}, lastMove: null }),
